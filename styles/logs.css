@@ -1,0 +1,128 @@
+/* Logs Page Styles */
+
+.logs-toolbar {
+  display: flex;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+  flex-wrap: wrap;
+}
+
+.logs-filter {
+  display: flex;
+  gap: var(--spacing-md);
+  align-items: center;
+}
+
+.logs-filter select {
+  padding: var(--spacing-md);
+  border: 1px solid var(--neutral-border);
+  border-radius: var(--radius-md);
+}
+
+/* Added logs container styling */
+.logs-container {
+  background-color: var(--neutral-bg);
+  border: 1px solid var(--neutral-border);
+  border-radius: var(--radius-lg);
+  height: auto;
+  max-height: 600px;
+  overflow-y: auto;
+  font-family: 'Courier New', monospace;
+  font-size: var(--font-size-sm);
+}
+
+#logsList {
+  display: flex;
+  flex-direction: column;
+}
+
+.log-entry {
+  display: flex;
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--neutral-border-secondary);
+  gap: var(--spacing-md);
+  align-items: flex-start;
+}
+
+.log-entry:last-child {
+  border-bottom: none;
+}
+
+.log-timestamp {
+  color: var(--neutral-text-tertiary);
+  min-width: 140px;
+  flex-shrink: 0;
+}
+
+.log-level {
+  font-weight: 600;
+  min-width: 80px;
+  flex-shrink: 0;
+}
+
+.log-level-info {
+  color: var(--accent-info);
+}
+
+.log-level-warning {
+  color: var(--accent-warning);
+}
+
+.log-level-error {
+  color: var(--accent-danger);
+}
+
+.log-level-success {
+  color: var(--accent-success);
+}
+
+.log-time {
+  color: var(--neutral-text-tertiary);
+  min-width: 90px;
+  flex-shrink: 0;
+}
+
+.log-type {
+  font-weight: 600;
+  min-width: 60px;
+  flex-shrink: 0;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  text-align: center;
+  font-size: var(--font-size-xs);
+}
+
+.log-type.info {
+  background-color: rgba(23, 162, 184, 0.2);
+  color: var(--accent-info);
+}
+
+.log-type.error {
+  background-color: rgba(220, 53, 69, 0.2);
+  color: var(--accent-danger);
+}
+
+.log-type.warning {
+  background-color: rgba(255, 193, 7, 0.2);
+  color: var(--accent-warning);
+}
+
+.log-type.success {
+  background-color: rgba(40, 167, 69, 0.2);
+  color: var(--accent-success);
+}
+
+.log-message {
+  flex: 1;
+  color: var(--neutral-text);
+  word-break: break-all;
+}
+
+.log-filter-select {
+  padding: var(--spacing-md);
+  border: 1px solid var(--neutral-border);
+  border-radius: var(--radius-md);
+  background-color: var(--neutral-bg);
+  color: var(--neutral-text);
+  cursor: pointer;
+}

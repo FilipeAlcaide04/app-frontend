@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vulnerability Explorer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/global.css">
+    <link rel="stylesheet" href="styles/navigation_sidebar.css">
+    <link rel="stylesheet" href="styles/colors.css">
+    <link rel="stylesheet" href="styles/header.css">
+    <link rel="stylesheet" href="styles/content.css">
+    <link rel="stylesheet" href="styles/messages.css">
+    <link rel="stylesheet" href="styles/input.css">
+    <link rel="stylesheet" href="styles/modal.css">
+    <link rel="stylesheet" href="styles/switch-toggle.css">
+    <link rel="stylesheet" href="styles/settings-items.css">
+    <link rel="stylesheet" href="styles/page-sections.css">
+    <link rel="stylesheet" href="styles/tests.css">
+    <link rel="stylesheet" href="styles/analysis.css">
+    <link rel="stylesheet" href="styles/reports.css">
+    <link rel="stylesheet" href="styles/logs.css">
+</head>
+<body>
+    <div class="container">
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">🔍</div>
+                <span class="app-name">VE</span>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <button class="nav-item active" data-section="scanner">
+                        <span class="nav-icon">📊</span>
+                        <span class="nav-label">Scanner</span>
+                    </button>
+                    <button class="nav-item" data-section="tests">
+                        <span class="nav-icon">⚡</span>
+                        <span class="nav-label">Tests</span>
+                    </button>
+                    <button class="nav-item" data-section="analysis">
+                        <span class="nav-icon">🔬</span>
+                        <span class="nav-label">Analysis</span>
+                    </button>
+                </div>
+
+                <div class="nav-section">
+                    <button class="nav-item" data-section="reports">
+                        <span class="nav-icon">📄</span>
+                        <span class="nav-label">Reports</span>
+                    </button>
+                    <button class="nav-item" data-section="logs">
+                        <span class="nav-icon">📋</span>
+                        <span class="nav-label">Logs</span>
+                    </button>
+                </div>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button class="nav-item" id="settingsBtn">
+                    <span class="nav-icon">⚙️</span>
+                    <span class="nav-label">Settings</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="main-content">
+            <!-- HEADER -->
+            <header class="header">
+                <div class="header-content">
+                    <h1 class="page-title" id="pageTitle">Scanner</h1>
+                    <p class="page-subtitle" id="pageSubtitle">Real-time vulnerability assessment</p>
+                </div>
+                <div class="status-badge" id="statusBadge">
+                    <div class="status-dot"></div>
+                    <span>Active</span>
+                </div>
+            </header>
+
+            <!-- CONTENT WRAPPER -->
+            <div class="content-wrapper">
+                <!-- SCANNER PAGE -->
+                <div class="page-section active" id="scanner-page">
+                    <section class="tools-grid">
+                        <div class="tool-card">
+                            <button class="tool-btn" id="fullScanBtn">
+                                <span class="tool-icon">🎯</span>
+                                <span class="tool-title">Full Scan</span>
+                                <span class="tool-desc">Complete assessment</span>
+                            </button>
+                        </div>
+                        <div class="tool-card">
+                            <button class="tool-btn" id="sqlInjectionBtn">
+                                <span class="tool-icon">💉</span>
+                                <span class="tool-title">SQL Injection</span>
+                                <span class="tool-desc">SQL vulnerabilities</span>
+                            </button>
+                        </div>
+                        <div class="tool-card">
+                            <button class="tool-btn" id="xssTestBtn">
+                                <span class="tool-icon">🔗</span>
+                                <span class="tool-title">XSS Tests</span>
+                                <span class="tool-desc">XSS analysis</span>
+                            </button>
+                        </div>
+                        <div class="tool-card">
+                            <button class="tool-btn" id="headersBtn">
+                                <span class="tool-icon">📡</span>
+                                <span class="tool-title">Headers</span>
+                                <span class="tool-desc">Security headers</span>
+                            </button>
+                        </div>
+                        <div class="tool-card">
+                            <button class="tool-btn" id="endpointsBtn">
+                                <span class="tool-icon">🛣️</span>
+                                <span class="tool-title">Endpoints</span>
+                                <span class="tool-desc">API enumeration</span>
+                            </button>
+                        </div>
+                        <div class="tool-card">
+                            <button class="tool-btn" id="clearBtn">
+                                <span class="tool-icon">🗑️</span>
+                                <span class="tool-title">Clear Logs</span>
+                                <span class="tool-desc">Clear output</span>
+                            </button>
+                        </div>
+                    </section>
+
+                    <section class="messages-section">
+                        <div class="messages-header">
+                            <h3>Output Log</h3>
+                        </div>
+                        <div class="chat-messages" id="chatMessages">
+                            <div class="message bot">
+                                <div class="message-content">System initialized. Ready for scanning.</div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <div class="input-section">
+                        <div class="input-group">
+                            <input type="text" class="input-field" id="messageInput" placeholder="Enter URL or command...">
+                            <button class="btn-send" id="sendBtn">Send</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TESTS PAGE -->
+                <div class="page-section" id="tests-page">
+                    <div class="page-content">
+                        <div class="test-container">
+                            <h3 class="section-title">Available Tests</h3>
+                            <div class="test-list">
+                                <div class="test-item">
+                                    <div class="test-info">
+                                        <h4>Authentication Tests</h4>
+                                        <p>Test login mechanisms and credential handling</p>
+                                    </div>
+                                    <button class="btn-run-test" data-test="auth">Run Test</button>
+                                </div>
+                                <div class="test-item">
+                                    <div class="test-info">
+                                        <h4>CSRF Protection</h4>
+                                        <p>Verify CSRF tokens and protections</p>
+                                    </div>
+                                    <button class="btn-run-test" data-test="csrf">Run Test</button>
+                                </div>
+                                <div class="test-item">
+                                    <div class="test-info">
+                                        <h4>Input Validation</h4>
+                                        <p>Check for input validation bypasses</p>
+                                    </div>
+                                    <button class="btn-run-test" data-test="input">Run Test</button>
+                                </div>
+                                <div class="test-item">
+                                    <div class="test-info">
+                                        <h4>File Upload</h4>
+                                        <p>Test file upload vulnerabilities</p>
+                                    </div>
+                                    <button class="btn-run-test" data-test="upload">Run Test</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="test-results" id="testResults"></div>
+                    </div>
+                </div>
+
+                <!-- ANALYSIS PAGE -->
+                <div class="page-section" id="analysis-page">
+                    <div class="page-content">
+                        <div class="analysis-container">
+                            <h3 class="section-title">Vulnerability Analysis</h3>
+                            <div class="analysis-stats">
+                                <div class="stat-card">
+                                    <span class="stat-label">Critical</span>
+                                    <span class="stat-value critical" id="criticalCount">0</span>
+                                </div>
+                                <div class="stat-card">
+                                    <span class="stat-label">High</span>
+                                    <span class="stat-value high" id="highCount">0</span>
+                                </div>
+                                <div class="stat-card">
+                                    <span class="stat-label">Medium</span>
+                                    <span class="stat-value medium" id="mediumCount">0</span>
+                                </div>
+                                <div class="stat-card">
+                                    <span class="stat-label">Low</span>
+                                    <span class="stat-value low" id="lowCount">0</span>
+                                </div>
+                            </div>
+                            <div class="analysis-details" id="analysisDetails"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- REPORTS PAGE -->
+                <div class="page-section" id="reports-page">
+                    <div class="page-content">
+                        <div class="reports-container">
+                            <h3 class="section-title">Generated Reports</h3>
+                            <div class="reports-list" id="reportsList">
+                                <div class="empty-state">
+                                    <p>No reports generated yet</p>
+                                    <button class="btn-action" id="generateReportBtn">Generate Report</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- LOGS PAGE -->
+                <div class="page-section" id="logs-page">
+                    <div class="page-content">
+                        <div class="logs-container">
+                            <h3 class="section-title">Activity Logs</h3>
+                            <div class="logs-filter">
+                                <select id="logFilter" class="log-filter-select">
+                                    <option value="all">All Events</option>
+                                    <option value="scan">Scans</option>
+                                    <option value="test">Tests</option>
+                                    <option value="error">Errors</option>
+                                </select>
+                            </div>
+                            <div class="logs-list" id="logsList">
+                                <div class="log-entry">
+                                    <span class="log-time">00:00:00</span>
+                                    <span class="log-type info">INFO</span>
+                                    <span class="log-message">System started</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- SETTINGS MODAL -->
+    <div class="modal" id="settingsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Settings</h2>
+                <button class="modal-close" id="closeSettingsBtn">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="setting-item">
+                    <div>
+                        <span class="setting-label">Deep Scan</span>
+                        <p class="setting-desc">Enable comprehensive analysis</p>
+                    </div>
+                    <div class="toggle" data-toggle="deepScan">
+                        <div class="toggle-knob"></div>
+                    </div>
+                </div>
+                <div class="setting-item">
+                    <div>
+                        <span class="setting-label">Auto Logging</span>
+                        <p class="setting-desc">Log all results automatically</p>
+                    </div>
+                    <div class="toggle active" data-toggle="autoLogging">
+                        <div class="toggle-knob"></div>
+                    </div>
+                </div>
+                <div class="setting-item">
+                    <div>
+                        <span class="setting-label">SSL Verify</span>
+                        <p class="setting-desc">Verify SSL certificates</p>
+                    </div>
+                    <div class="toggle active" data-toggle="sslVerify">
+                        <div class="toggle-knob"></div>
+                    </div>
+                </div>
+                <div class="setting-item">
+                    <div>
+                        <span class="setting-label">Real-time Alerts</span>
+                        <p class="setting-desc">Instant notifications</p>
+                    </div>
+                    <div class="toggle active" data-toggle="alerts">
+                        <div class="toggle-knob"></div>
+                    </div>
+                </div>
+                <div class="setting-item">
+                    <div>
+                        <span class="setting-label">Stealth Mode</span>
+                        <p class="setting-desc">Minimize detection</p>
+                    </div>
+                    <div class="toggle" data-toggle="stealthMode">
+                        <div class="toggle-knob"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script type="module" src="scripts/modules/navigation.js"></script>
+    <script type="module" src="scripts/app.js"></script>
+
+
+</body>
+</html>

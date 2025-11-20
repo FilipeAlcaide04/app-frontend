@@ -1,0 +1,61 @@
+/* ============================================
+   INPUT SECTION
+   ============================================ */
+
+.input-section {
+  padding: 16px 0;
+  flex-shrink: 0;
+}
+
+.input-group {
+  display: flex;
+  gap: 8px;
+}
+
+.input-field {
+  flex: 1;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  color: var(--text-primary);
+  font-family: 'Fira Code', monospace;
+  font-size: 12px;
+  font-weight: 400;
+  outline: none;
+  transition: var(--transition);
+}
+
+.input-field:focus {
+  border-color: var(--primary);
+  background: var(--bg-tertiary);
+  box-shadow: 0 0 0 3px rgba(91, 78, 255, 0.1);
+}
+
+.input-field::placeholder {
+  color: var(--text-tertiary);
+}
+
+.btn-send {
+  padding: 12px 20px;
+  background: var(--primary);
+  border: 1px solid var(--primary-dark);
+  border-radius: var(--radius-md);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: var(--transition);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn-send:hover {
+  background: var(--primary-light);
+  box-shadow: 0 4px 12px rgba(91, 78, 255, 0.3);
+}
+
+.btn-send:active {
+  background: var(--primary-dark);
+}

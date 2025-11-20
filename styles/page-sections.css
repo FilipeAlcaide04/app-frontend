@@ -1,0 +1,49 @@
+/* ============================================
+   PAGE SECTIONS
+   ============================================ */
+
+.page-section {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+  gap: 16px;
+}
+
+.page-section.active {
+  display: flex;
+}
+
+.page-content {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.section-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+}
+
+.page-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.page-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.page-content::-webkit-scrollbar-thumb {
+  background: var(--border-light);
+  border-radius: 3px;
+}
+
+.page-content::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}

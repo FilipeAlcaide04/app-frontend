@@ -1,0 +1,70 @@
+/* ============================================
+   REPORTS
+   ============================================ */
+
+.reports-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.report-item {
+  padding: 12px 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 11px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: var(--transition);
+}
+
+.report-item:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--border-light);
+}
+
+.reports-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.reports-list::-webkit-scrollbar-thumb {
+  background: var(--border-light);
+}
+
+.reports-list::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 32px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.btn-action {
+  padding: 10px 16px;
+  background: var(--accent);
+  border: 1px solid var(--accent-dark);
+  border-radius: var(--radius-md);
+  color: var(--bg-primary);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn-action:hover {
+  background: #00d9a3;
+  box-shadow: 0 4px 12px rgba(0, 217, 163, 0.3);
+}

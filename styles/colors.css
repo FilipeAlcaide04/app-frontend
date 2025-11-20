@@ -1,0 +1,35 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --primary: #5b4eff;
+  --primary-dark: #4d3fd9;
+  --primary-light: #7c6bff;
+  --accent: #00d9a3;
+  --accent-dark: #00b388;
+
+  --bg-primary: #0f1419;
+  --bg-secondary: #1a1f2e;
+  --bg-tertiary: #252d3d;
+  --bg-hover: #2f3a4d;
+
+  --border: #3a4558;
+  --border-light: #4a5568;
+
+  --text-primary: #f5f6f7;
+  --text-secondary: #a0a8b8;
+  --text-tertiary: #6b7280;
+
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
