@@ -1,0 +1,88 @@
+"use client"
+
+import { useState } from "react"
+import { ChevronDown, ChevronUp, Brain } from "lucide-react"
+import { Button } from "@/components/ui/button"
+
+const agents = [
+  {
+    name: "Lógico-Analítico",
+    description: "Matemática, programação, raciocínio lógico, decisões racionais",
+    color: "#0088ff",
+  },
+  {
+    name: "Emocional",
+    description: "Sentimentos, empatia, reações emocionais, vínculos",
+    color: "#ff3366",
+  },
+  {
+    name: "Criativo",
+    description: "Ideias novas, arte, música, humor, associações inesperadas",
+    color: "#aa00ff",
+  },
+  {
+    name: "Memória",
+    description: "Experiências, aprendizados, traumas, referências passadas",
+    color: "#00ff88",
+  },
+  {
+    name: "Instinto",
+    description: "Medo, prazer, fome, resposta rápida a ameaças",
+    color: "#ff8800",
+  },
+  {
+    name: "Social",
+    description: "Linguagem, normas sociais, reputação, leitura de intenções",
+    color: "#ffee00",
+  },
+  {
+    name: "Executivo",
+    description: "Foco, atenção, autocontrolo, orquestração dos agentes",
+    color: "#00ffff",
+  },
+]
+
+export function AgentLegend() {
+  const [isExpanded, setIsExpanded] = useState(false)
+
+  return (
+    <div className="absolute bottom-4 right-4 z-10 max-w-xs">
+      <Button
+        variant="outline"
+        size="sm"
+        className="w-full mb-2 bg-card/80 backdrop-blur-sm border-border"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <Brain className="h-4 w-4 mr-2" />
+        <span>Agentes Cognitivos</span>
+        {isExpanded ? (
+          <ChevronDown className="h-4 w-4 ml-auto" />
+        ) : (
+          <ChevronUp className="h-4 w-4 ml-auto" />
+        )}
+      </Button>
+
+      {isExpanded && (
+        <div className="bg-card/90 backdrop-blur-md border border-border rounded-lg p-3 space-y-2 animate-in slide-in-from-bottom-2 duration-200">
+          {agents.map((agent) => (
+            <div key={agent.name} className="flex items-start gap-3">
+              <div
+                className="w-3 h-3 rounded-full mt-1 shrink-0 shadow-lg"
+                style={{
+                  backgroundColor: agent.color,
+                  boxShadow: `0 0 10px ${agent.color}60`,
+                }}
+              />
+              <div>
+                <p className="text-xs font-medium text-foreground">{agent.name}</p>
+                <p className="text-[10px] text-muted-foreground leading-tight">
+                  {agent.description}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
