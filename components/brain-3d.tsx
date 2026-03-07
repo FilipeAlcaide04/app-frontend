@@ -1,113 +1,152 @@
 "use client"
 
-import { useRef, useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import { Canvas, useFrame } from "@react-three/fiber"
-import { OrbitControls, Float, Html } from "@react-three/drei"
-import type * as THREE from "three"
+import { OrbitControls, Html, Environment, useGLTF } from "@react-three/drei"
+import * as THREE from "three"
 
-interface Agent {
+interface BrainRegion {
   name: string
+  emotion: string
   description: string
   color: string
   position: [number, number, number]
 }
 
-const agents: Agent[] = [
+const regions: BrainRegion[] = [
   {
-    name: "Lógico",
-    description: "Matemática, programação, raciocínio lógico",
-    color: "#0088ff",
-    position: [0, 1.2, 0.8],
+    name: "Córtex Pré-frontal",
+    emotion: "Autocontrolo",
+    description: "Regula impulsos, planeamento e tomada de decisão racional",
+    color: "#00d4ff",
+    position: [0.0, 0.55, 0.66],
   },
   {
-    name: "Emocional",
-    description: "Sentimentos, empatia, vínculos",
+    name: "Amígdala",
+    emotion: "Medo",
+    description: "Deteta ameaças, ativa alerta emocional e reação de sobrevivência",
     color: "#ff3366",
-    position: [-1.1, 0.3, 0.5],
+    position: [-0.26, -0.12, 0.35],
   },
   {
-    name: "Criativo",
-    description: "Ideias novas, arte, música, humor",
-    color: "#aa00ff",
-    position: [1.1, 0.3, 0.5],
+    name: "Núcleo Accumbens",
+    emotion: "Prazer",
+    description: "Relaciona-se com recompensa, motivação e sensação de conquista",
+    color: "#ffd400",
+    position: [0.26, -0.1, 0.35],
   },
   {
-    name: "Memória",
-    description: "Experiências, aprendizados, referências",
+    name: "Hipocampo",
+    emotion: "Memória Afetiva",
+    description: "Consolida memórias e liga experiências a estados emocionais",
     color: "#00ff88",
-    position: [-0.7, -0.8, 0.6],
+    position: [-0.4, -0.45, 0.12],
   },
   {
-    name: "Instinto",
-    description: "Medo, prazer, resposta a ameaças",
-    color: "#ff8800",
-    position: [0.7, -0.8, 0.6],
+    name: "Córtex Insular",
+    emotion: "Empatia",
+    description: "Perceção interna do corpo, dor social e leitura emocional do outro",
+    color: "#ff8a00",
+    position: [0.6, 0.05, 0.15],
   },
   {
-    name: "Social",
-    description: "Linguagem, normas sociais, reputação",
-    color: "#ffee00",
-    position: [0, 0.2, 1.2],
+    name: "Córtex Temporal",
+    emotion: "Vínculo Social",
+    description: "Interpreta voz, rosto e sinais sociais importantes para conexão",
+    color: "#a855f7",
+    position: [-0.62, 0.05, 0.16],
   },
   {
-    name: "Executivo",
-    description: "Foco, atenção, autocontrolo",
-    color: "#00ffff",
-    position: [0, 0.8, -0.3],
+    name: "Lobo Occipital",
+    emotion: "Imaginação",
+    description: "Transforma estímulos visuais em imagens mentais e criatividade",
+    color: "#3b82f6",
+    position: [0, 0.22, -0.56],
   },
 ]
 
-function AgentNode({ agent, index }: { agent: Agent; index: number }) {
+const overlayVertexShader = `
+varying vec3 vLocalPos;
+
+void main() {
+  vLocalPos = position;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}
+`
+
+const overlayFragmentShader = `
+uniform float uTime;
+uniform vec3 uCenters[7];
+uniform vec3 uColors[7];
+varying vec3 vLocalPos;
+
+void main() {
+  vec3 blended = vec3(0.0);
+  float total = 0.0;
+
+  for (int i = 0; i < 7; i++) {
+    float d = distance(vLocalPos, uCenters[i]);
+    float pulse = 0.9 + 0.1 * sin(uTime * 2.2 + float(i));
+    float w = exp(-pow(d / 0.42, 2.0)) * pulse;
+    blended += uColors[i] * w;
+    total += w;
+  }
+
+  if (total < 0.12) {
+    discard;
+  }
+
+  vec3 colorOut = blended / max(total, 0.0001);
+  float alpha = clamp(total * 0.26, 0.0, 0.42);
+  gl_FragColor = vec4(colorOut, alpha);
+}
+`
+
+function EmotionMarker({ region, index }: { region: BrainRegion; index: number }) {
   const meshRef = useRef<THREE.Mesh>(null)
   const [hovered, setHovered] = useState(false)
-  const [intensity, setIntensity] = useState(0.3)
 
   useFrame((state) => {
-    const time = state.clock.getElapsedTime()
-    
-    // Random pulsing intensity
-    const baseIntensity = 0.3 + Math.sin(time * 2 + index * 1.5) * 0.2
-    const randomPulse = Math.random() > 0.98 ? 1.5 : 0
-    setIntensity(baseIntensity + randomPulse + (hovered ? 0.5 : 0))
-    
-    // Subtle floating movement
     if (meshRef.current) {
-      meshRef.current.position.y = agent.position[1] + Math.sin(time + index) * 0.05
+      const time = state.clock.getElapsedTime()
+      const material = meshRef.current.material as THREE.MeshStandardMaterial
+      material.emissiveIntensity = 0.7 + Math.sin(time * 2 + index * 0.7) * 0.22 + (hovered ? 0.35 : 0)
+      meshRef.current.scale.setScalar(hovered ? 1.25 : 1)
     }
   })
 
   return (
-    <group position={agent.position}>
+    <group position={region.position}>
       <mesh
         ref={meshRef}
         onPointerOver={() => setHovered(true)}
         onPointerOut={() => setHovered(false)}
       >
-        <sphereGeometry args={[0.25, 32, 32]} />
+        <sphereGeometry args={[0.055, 28, 28]} />
         <meshStandardMaterial
-          color={agent.color}
-          emissive={agent.color}
-          emissiveIntensity={intensity}
-          metalness={0.3}
-          roughness={0.4}
+          color={region.color}
+          emissive={region.color}
+          emissiveIntensity={0.9}
+          metalness={0.1}
+          roughness={0.25}
         />
       </mesh>
-      
-      {/* Glow effect */}
-      <pointLight color={agent.color} intensity={intensity * 2} distance={2} />
-      
-      {/* Outer glow sphere */}
-      <mesh scale={1.4}>
-        <sphereGeometry args={[0.25, 16, 16]} />
-        <meshBasicMaterial color={agent.color} transparent opacity={intensity * 0.15} />
+
+      <pointLight color={region.color} intensity={hovered ? 1 : 0.45} distance={0.8} />
+
+      <mesh scale={hovered ? 1.6 : 1.35}>
+        <sphereGeometry args={[0.055, 20, 20]} />
+        <meshBasicMaterial color={region.color} transparent opacity={hovered ? 0.22 : 0.1} />
       </mesh>
-      
-      {/* Label on hover */}
+
       {hovered && (
-        <Html position={[0, 0.5, 0]} center>
-          <div className="bg-card/95 backdrop-blur-sm border border-border rounded-lg px-3 py-2 min-w-[160px] shadow-xl">
-            <p className="text-foreground font-semibold text-sm">{agent.name}</p>
-            <p className="text-muted-foreground text-xs">{agent.description}</p>
+        <Html position={[0, 0.22, 0]} center distanceFactor={8}>
+          <div className="bg-card/95 backdrop-blur-sm border border-border rounded-lg px-3 py-2 min-w-[200px] shadow-xl">
+            <p className="text-foreground font-semibold text-sm">{region.name}</p>
+            <p className="text-xs font-medium" style={{ color: region.color }}>
+              Emoção: {region.emotion}
+            </p>
+            <p className="text-muted-foreground text-xs mt-1">{region.description}</p>
           </div>
         </Html>
       )}
@@ -115,113 +154,96 @@ function AgentNode({ agent, index }: { agent: Agent; index: number }) {
   )
 }
 
-function NeuralConnections() {
-  const linesRef = useRef<THREE.Group>(null)
-  
-  const connections = useMemo(() => {
-    const conns: { start: [number, number, number]; end: [number, number, number] }[] = []
-    
-    // Create connections between nearby agents
-    for (let i = 0; i < agents.length; i++) {
-      for (let j = i + 1; j < agents.length; j++) {
-        conns.push({
-          start: agents[i].position,
-          end: agents[j].position,
-        })
+function RealisticBrain() {
+  const brainRef = useRef<THREE.Group>(null)
+  const { scene } = useGLTF("/models/brain.glb")
+
+  const normalized = useMemo(() => {
+    let sourceGeometry: THREE.BufferGeometry | null = null
+
+    scene.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh && !sourceGeometry) {
+        sourceGeometry = (child as THREE.Mesh).geometry
       }
+    })
+
+    if (!sourceGeometry) return null
+
+    const geometry = sourceGeometry.clone()
+    geometry.computeVertexNormals()
+    geometry.computeBoundingBox()
+
+    const box = geometry.boundingBox
+    if (!box) return null
+
+    const size = new THREE.Vector3()
+    const center = new THREE.Vector3()
+    box.getSize(size)
+    box.getCenter(center)
+    geometry.translate(-center.x, -center.y, -center.z)
+
+    const maxDim = Math.max(size.x, size.y, size.z)
+    const scale = 2.5 / maxDim
+
+    return { geometry, scale }
+  }, [scene])
+
+  const overlayUniforms = useMemo(() => {
+    return {
+      uTime: { value: 0 },
+      uCenters: { value: regions.map((region) => new THREE.Vector3(...region.position)) },
+      uColors: { value: regions.map((region) => new THREE.Color(region.color)) },
     }
-    return conns
   }, [])
 
   useFrame((state) => {
-    if (linesRef.current) {
-      linesRef.current.children.forEach((child, i) => {
-        const material = (child as THREE.Line).material as THREE.LineBasicMaterial
-        const time = state.clock.getElapsedTime()
-        const pulse = Math.sin(time * 3 + i * 0.5) * 0.5 + 0.5
-        material.opacity = 0.1 + pulse * 0.2
-      })
-    }
-  })
+    overlayUniforms.uTime.value = state.clock.getElapsedTime()
 
-  return (
-    <group ref={linesRef}>
-      {connections.map((conn, i) => {
-        const points = [
-          new Float32Array([...conn.start, ...conn.end])
-        ]
-        return (
-          <line key={i}>
-            <bufferGeometry>
-              <bufferAttribute
-                attach="attributes-position"
-                args={[new Float32Array([...conn.start, ...conn.end]), 3]}
-              />
-            </bufferGeometry>
-            <lineBasicMaterial color="#4488ff" transparent opacity={0.2} />
-          </line>
-        )
-      })}
-    </group>
-  )
-}
-
-function BrainMesh() {
-  const brainRef = useRef<THREE.Group>(null)
-
-  useFrame((state) => {
     if (brainRef.current) {
-      brainRef.current.rotation.y = state.clock.getElapsedTime() * 0.1
+      const time = state.clock.getElapsedTime()
+      brainRef.current.rotation.y = time * 0.12
+      brainRef.current.rotation.x = Math.sin(time * 0.35) * 0.06
+      brainRef.current.position.y = Math.sin(time * 0.9) * 0.04
     }
   })
 
+  if (!normalized) {
+    return null
+  }
+
   return (
-    <Float speed={0.5} rotationIntensity={0.05} floatIntensity={0.1}>
-      <group ref={brainRef}>
-        {/* Brain hemisphere - left */}
-        <mesh position={[-0.4, 0, 0]}>
-          <sphereGeometry args={[1, 64, 64, 0, Math.PI]} />
-          <meshStandardMaterial
-            color="#2a3050"
-            emissive="#1a2040"
-            emissiveIntensity={0.3}
-            metalness={0.2}
-            roughness={0.8}
-            wireframe={false}
-            transparent
-            opacity={0.6}
+    <group ref={brainRef}>
+      <group scale={normalized.scale}>
+        <mesh geometry={normalized.geometry} castShadow receiveShadow>
+          <meshPhysicalMaterial
+            color="#d8a3a3"
+            roughness={0.72}
+            metalness={0.02}
+            clearcoat={0.08}
+            clearcoatRoughness={0.75}
+            sheen={0.35}
+            sheenColor="#ffb7b7"
+            emissive="#3a1d1d"
+            emissiveIntensity={0.06}
           />
         </mesh>
-        
-        {/* Brain hemisphere - right */}
-        <mesh position={[0.4, 0, 0]} rotation={[0, Math.PI, 0]}>
-          <sphereGeometry args={[1, 64, 64, 0, Math.PI]} />
-          <meshStandardMaterial
-            color="#2a3050"
-            emissive="#1a2040"
-            emissiveIntensity={0.3}
-            metalness={0.2}
-            roughness={0.8}
+
+        <mesh geometry={normalized.geometry} scale={1.003} renderOrder={2}>
+          <shaderMaterial
             transparent
-            opacity={0.6}
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+            uniforms={overlayUniforms}
+            vertexShader={overlayVertexShader}
+            fragmentShader={overlayFragmentShader}
           />
         </mesh>
-        
-        {/* Inner glow */}
-        <mesh>
-          <sphereGeometry args={[0.9, 32, 32]} />
-          <meshBasicMaterial color="#1a3060" transparent opacity={0.3} />
-        </mesh>
-        
-        {/* Neural connections */}
-        <NeuralConnections />
-        
-        {/* Agent nodes */}
-        {agents.map((agent, index) => (
-          <AgentNode key={agent.name} agent={agent} index={index} />
+
+        {regions.map((region, index) => (
+          <EmotionMarker key={region.name} region={region} index={index} />
         ))}
       </group>
-    </Float>
+    </group>
   )
 }
 
@@ -233,13 +255,17 @@ export function Brain3D() {
       gl={{ antialias: true, alpha: true }}
     >
       <color attach="background" args={["#0a0a12"]} />
-      <fog attach="fog" args={["#0a0a12", 6, 15]} />
-      
-      <ambientLight intensity={0.2} />
-      <directionalLight position={[5, 5, 5]} intensity={0.5} />
-      <directionalLight position={[-5, -5, -5]} intensity={0.3} color="#0066ff" />
-      
-      <BrainMesh />
+      <fog attach="fog" args={["#0a0a12", 5.5, 13]} />
+
+      <ambientLight intensity={0.48} />
+      <hemisphereLight intensity={0.38} color="#ffd4d4" groundColor="#0a0a12" />
+      <directionalLight position={[4, 5, 5]} intensity={0.95} color="#fff0ef" />
+      <directionalLight position={[-5, 2, -4]} intensity={0.34} color="#86a6ff" />
+      <pointLight position={[0, 2, 2]} intensity={0.45} color="#ffdede" distance={8} />
+
+      <RealisticBrain />
+
+      <Environment preset="studio" />
       
       <OrbitControls
         enablePan={false}
@@ -252,3 +278,5 @@ export function Brain3D() {
     </Canvas>
   )
 }
+
+useGLTF.preload("/models/brain.glb")

@@ -6,39 +6,39 @@ import { Button } from "@/components/ui/button"
 
 const agents = [
   {
-    name: "Lógico-Analítico",
-    description: "Matemática, programação, raciocínio lógico, decisões racionais",
-    color: "#0088ff",
+    name: "Córtex Pré-frontal • Autocontrolo",
+    description: "Planeamento, foco e decisões sob emoção",
+    color: "#00d4ff",
   },
   {
-    name: "Emocional",
-    description: "Sentimentos, empatia, reações emocionais, vínculos",
+    name: "Amígdala • Medo",
+    description: "Alerta emocional e resposta a ameaças",
     color: "#ff3366",
   },
   {
-    name: "Criativo",
-    description: "Ideias novas, arte, música, humor, associações inesperadas",
-    color: "#aa00ff",
+    name: "Núcleo Accumbens • Prazer",
+    description: "Recompensa, motivação e sensação de conquista",
+    color: "#ffd400",
   },
   {
-    name: "Memória",
-    description: "Experiências, aprendizados, traumas, referências passadas",
+    name: "Hipocampo • Memória Afetiva",
+    description: "Memórias ligadas a sentimentos e contexto",
     color: "#00ff88",
   },
   {
-    name: "Instinto",
-    description: "Medo, prazer, fome, resposta rápida a ameaças",
+    name: "Córtex Insular • Empatia",
+    description: "Sensações internas e leitura emocional social",
     color: "#ff8800",
   },
   {
-    name: "Social",
-    description: "Linguagem, normas sociais, reputação, leitura de intenções",
-    color: "#ffee00",
+    name: "Córtex Temporal • Vínculo Social",
+    description: "Interpretação de voz, rosto e intenção",
+    color: "#a855f7",
   },
   {
-    name: "Executivo",
-    description: "Foco, atenção, autocontrolo, orquestração dos agentes",
-    color: "#00ffff",
+    name: "Lobo Occipital • Imaginação",
+    description: "Visualização mental e criatividade",
+    color: "#3b82f6",
   },
 ]
 
@@ -54,7 +54,7 @@ export function AgentLegend() {
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <Brain className="h-4 w-4 mr-2" />
-        <span>Agentes Cognitivos</span>
+        <span>Emoções do Cérebro</span>
         {isExpanded ? (
           <ChevronDown className="h-4 w-4 ml-auto" />
         ) : (

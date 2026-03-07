@@ -104,7 +104,7 @@ export default function ConsciousnessInterface() {
           {/* Panel Label */}
           <div className="absolute top-4 left-4 z-10 flex items-center gap-2 bg-card/80 backdrop-blur-sm px-3 py-1.5 rounded-full border border-border">
             <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-            <span className="text-xs text-foreground font-medium">Cérebro / Agentes</span>
+            <span className="text-xs text-foreground font-medium">Cérebro / Emoções</span>
           </div>
 
           {/* Instructions */}
@@ -146,7 +146,7 @@ function MobileBrainModal() {
         <div className="fixed inset-0 z-50 bg-background">
           <div className="absolute top-4 left-4 z-10 flex items-center gap-2 bg-card/80 backdrop-blur-sm px-3 py-1.5 rounded-full border border-border">
             <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-            <span className="text-xs text-foreground font-medium">Cérebro / Agentes</span>
+            <span className="text-xs text-foreground font-medium">Cérebro / Emoções</span>
           </div>
           
           <button
