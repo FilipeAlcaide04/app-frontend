@@ -1,8 +1,8 @@
 "use client"
 
-import { useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Canvas, useFrame } from "@react-three/fiber"
-import { OrbitControls, Html, Environment, useGLTF } from "@react-three/drei"
+import { OrbitControls, Environment, Html, useGLTF } from "@react-three/drei"
 import * as THREE from "three"
 
 interface BrainRegion {
@@ -11,6 +11,7 @@ interface BrainRegion {
   description: string
   color: string
   position: [number, number, number]
+  radius: number
 }
 
 const regions: BrainRegion[] = [
@@ -18,50 +19,65 @@ const regions: BrainRegion[] = [
     name: "Córtex Pré-frontal",
     emotion: "Autocontrolo",
     description: "Regula impulsos, planeamento e tomada de decisão racional",
-    color: "#00d4ff",
-    position: [0.0, 0.55, 0.66],
+    color: "#00f7ff",
+    position: [0.0, 0.62, 0.58],
+    radius: 0.74,
+  },
+  {
+    name: "Córtex Parietal",
+    emotion: "Atenção",
+    description: "Integra informação sensorial e mantém foco espacial no ambiente",
+    color: "#ff35ff",
+    position: [0.0, 0.88, 0.1],
+    radius: 0.68,
   },
   {
     name: "Amígdala",
     emotion: "Medo",
     description: "Deteta ameaças, ativa alerta emocional e reação de sobrevivência",
-    color: "#ff3366",
+    color: "#ff1455",
     position: [-0.26, -0.12, 0.35],
+    radius: 0.52,
   },
   {
     name: "Núcleo Accumbens",
     emotion: "Prazer",
     description: "Relaciona-se com recompensa, motivação e sensação de conquista",
-    color: "#ffd400",
+    color: "#fff000",
     position: [0.26, -0.1, 0.35],
+    radius: 0.52,
   },
   {
     name: "Hipocampo",
     emotion: "Memória Afetiva",
     description: "Consolida memórias e liga experiências a estados emocionais",
-    color: "#00ff88",
+    color: "#00ff95",
     position: [-0.4, -0.45, 0.12],
+    radius: 0.54,
   },
   {
     name: "Córtex Insular",
     emotion: "Empatia",
     description: "Perceção interna do corpo, dor social e leitura emocional do outro",
-    color: "#ff8a00",
+    color: "#ff7300",
     position: [0.6, 0.05, 0.15],
+    radius: 0.56,
   },
   {
     name: "Córtex Temporal",
     emotion: "Vínculo Social",
     description: "Interpreta voz, rosto e sinais sociais importantes para conexão",
-    color: "#a855f7",
+    color: "#bf00ff",
     position: [-0.62, 0.05, 0.16],
+    radius: 0.56,
   },
   {
     name: "Lobo Occipital",
     emotion: "Imaginação",
     description: "Transforma estímulos visuais em imagens mentais e criatividade",
-    color: "#3b82f6",
+    color: "#2390ff",
     position: [0, 0.22, -0.56],
+    radius: 0.62,
   },
 ]
 
@@ -76,94 +92,72 @@ void main() {
 
 const overlayFragmentShader = `
 uniform float uTime;
-uniform vec3 uCenters[7];
-uniform vec3 uColors[7];
+uniform vec3 uCenters[8];
+uniform vec3 uColors[8];
+uniform float uRadii[8];
 varying vec3 vLocalPos;
 
 void main() {
-  vec3 blended = vec3(0.0);
-  float total = 0.0;
+  float nearestD = 1000.0;
+  float secondD = 1000.0;
+  int nearestI = 0;
+  int secondI = 0;
 
-  for (int i = 0; i < 7; i++) {
-    float d = distance(vLocalPos, uCenters[i]);
-    float pulse = 0.9 + 0.1 * sin(uTime * 2.2 + float(i));
-    float w = exp(-pow(d / 0.42, 2.0)) * pulse;
-    blended += uColors[i] * w;
-    total += w;
+  for (int i = 0; i < 8; i++) {
+    float d = distance(vLocalPos, uCenters[i]) / uRadii[i];
+
+    if (d < nearestD) {
+      secondD = nearestD;
+      secondI = nearestI;
+      nearestD = d;
+      nearestI = i;
+    } else if (d < secondD) {
+      secondD = d;
+      secondI = i;
+    }
   }
 
-  if (total < 0.12) {
-    discard;
-  }
+  // Cor dominante por região + transição curta apenas na fronteira.
+  float edgeBand = 0.07;
+  float edgeDelta = secondD - nearestD;
+  float edgeMix = 1.0 - smoothstep(0.0, edgeBand, edgeDelta);
+  vec3 hardColor = uColors[nearestI];
+  vec3 neighborColor = uColors[secondI];
+  vec3 blended = mix(hardColor, neighborColor, edgeMix * 0.5);
 
-  vec3 colorOut = blended / max(total, 0.0001);
-  float alpha = clamp(total * 0.26, 0.0, 0.42);
+  // Menos saturação/intensidade para preservar leitura dos sulcos do modelo.
+  vec3 colorOut = pow(blended, vec3(1.04)) * 0.9;
+  colorOut = clamp(colorOut, 0.0, 1.0);
+
+  // Cobertura contínua para evitar áreas "mal pintadas" no fundo.
+  float coverage = smoothstep(1.35, 0.82, nearestD);
+  vec3 baseTint = vec3(0.86, 0.82, 0.87);
+  colorOut = mix(baseTint, colorOut, coverage);
+
+  float pulse = 0.88 + 0.12 * sin(uTime * 2.0 + float(nearestI));
+  float alpha = mix(0.28, 0.52, coverage) * pulse;
+  alpha = clamp(alpha, 0.24, 0.56);
+
   gl_FragColor = vec4(colorOut, alpha);
 }
 `
 
-function EmotionMarker({ region, index }: { region: BrainRegion; index: number }) {
-  const meshRef = useRef<THREE.Mesh>(null)
-  const [hovered, setHovered] = useState(false)
-
-  useFrame((state) => {
-    if (meshRef.current) {
-      const time = state.clock.getElapsedTime()
-      const material = meshRef.current.material as THREE.MeshStandardMaterial
-      material.emissiveIntensity = 0.7 + Math.sin(time * 2 + index * 0.7) * 0.22 + (hovered ? 0.35 : 0)
-      meshRef.current.scale.setScalar(hovered ? 1.25 : 1)
-    }
-  })
-
-  return (
-    <group position={region.position}>
-      <mesh
-        ref={meshRef}
-        onPointerOver={() => setHovered(true)}
-        onPointerOut={() => setHovered(false)}
-      >
-        <sphereGeometry args={[0.055, 28, 28]} />
-        <meshStandardMaterial
-          color={region.color}
-          emissive={region.color}
-          emissiveIntensity={0.9}
-          metalness={0.1}
-          roughness={0.25}
-        />
-      </mesh>
-
-      <pointLight color={region.color} intensity={hovered ? 1 : 0.45} distance={0.8} />
-
-      <mesh scale={hovered ? 1.6 : 1.35}>
-        <sphereGeometry args={[0.055, 20, 20]} />
-        <meshBasicMaterial color={region.color} transparent opacity={hovered ? 0.22 : 0.1} />
-      </mesh>
-
-      {hovered && (
-        <Html position={[0, 0.22, 0]} center distanceFactor={8}>
-          <div className="bg-card/95 backdrop-blur-sm border border-border rounded-lg px-3 py-2 min-w-[200px] shadow-xl">
-            <p className="text-foreground font-semibold text-sm">{region.name}</p>
-            <p className="text-xs font-medium" style={{ color: region.color }}>
-              Emoção: {region.emotion}
-            </p>
-            <p className="text-muted-foreground text-xs mt-1">{region.description}</p>
-          </div>
-        </Html>
-      )}
-    </group>
-  )
-}
-
 function RealisticBrain() {
   const brainRef = useRef<THREE.Group>(null)
+  const [hoveredRegionIndex, setHoveredRegionIndex] = useState<number | null>(null)
+  const hoveredRegionRef = useRef<number | null>(null)
+  const outTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const switchCandidateRef = useRef<{ index: number; since: number } | null>(null)
   const { scene } = useGLTF("/models/brain.glb")
 
+  const hoveredRegion = hoveredRegionIndex !== null ? regions[hoveredRegionIndex] : null
+
   const normalized = useMemo(() => {
-    let sourceGeometry: THREE.BufferGeometry | null = null
+    let sourceGeometry: THREE.BufferGeometry | undefined
 
     scene.traverse((child) => {
-      if ((child as THREE.Mesh).isMesh && !sourceGeometry) {
-        sourceGeometry = (child as THREE.Mesh).geometry
+      if (child instanceof THREE.Mesh && !sourceGeometry) {
+        sourceGeometry = child.geometry as THREE.BufferGeometry
       }
     })
 
@@ -193,19 +187,46 @@ function RealisticBrain() {
       uTime: { value: 0 },
       uCenters: { value: regions.map((region) => new THREE.Vector3(...region.position)) },
       uColors: { value: regions.map((region) => new THREE.Color(region.color)) },
+      uRadii: { value: regions.map((region) => region.radius) },
     }
   }, [])
 
   useFrame((state) => {
     overlayUniforms.uTime.value = state.clock.getElapsedTime()
-
-    if (brainRef.current) {
-      const time = state.clock.getElapsedTime()
-      brainRef.current.rotation.y = time * 0.12
-      brainRef.current.rotation.x = Math.sin(time * 0.35) * 0.06
-      brainRef.current.position.y = Math.sin(time * 0.9) * 0.04
-    }
   })
+
+  useEffect(() => {
+    hoveredRegionRef.current = hoveredRegionIndex
+  }, [hoveredRegionIndex])
+
+  useEffect(() => {
+    return () => {
+      if (outTimerRef.current) {
+        clearTimeout(outTimerRef.current)
+      }
+    }
+  }, [])
+
+  const getRegionDistance = (localPoint: THREE.Vector3, regionIndex: number): number => {
+    const center = new THREE.Vector3(...regions[regionIndex].position)
+    return center.distanceTo(localPoint) / regions[regionIndex].radius
+  }
+
+  const getNearestRegionIndex = (localPoint: THREE.Vector3): { index: number; distance: number } | null => {
+    let nearestD = Number.POSITIVE_INFINITY
+    let nearestIndex = -1
+
+    for (let i = 0; i < regions.length; i++) {
+      const d = getRegionDistance(localPoint, i)
+
+      if (d < nearestD) {
+        nearestD = d
+        nearestIndex = i
+      }
+    }
+
+    return nearestD <= 1.08 ? { index: nearestIndex, distance: nearestD } : null
+  }
 
   if (!normalized) {
     return null
@@ -215,33 +236,133 @@ function RealisticBrain() {
     <group ref={brainRef}>
       <group scale={normalized.scale}>
         <mesh geometry={normalized.geometry} castShadow receiveShadow>
-          <meshPhysicalMaterial
-            color="#d8a3a3"
-            roughness={0.72}
-            metalness={0.02}
-            clearcoat={0.08}
-            clearcoatRoughness={0.75}
-            sheen={0.35}
-            sheenColor="#ffb7b7"
-            emissive="#3a1d1d"
-            emissiveIntensity={0.06}
+          <meshStandardMaterial
+            color="#e7c9c9"
+            roughness={0.42}
+            metalness={0}
+            emissive="#2b1618"
+            emissiveIntensity={0.02}
+            flatShading={false}
           />
         </mesh>
 
-        <mesh geometry={normalized.geometry} scale={1.003} renderOrder={2}>
+        <mesh geometry={normalized.geometry} scale={1.006} renderOrder={2}>
           <shaderMaterial
             transparent
             depthWrite={false}
-            blending={THREE.AdditiveBlending}
+            depthTest
+            polygonOffset
+            polygonOffsetFactor={-1}
+            polygonOffsetUnits={-1}
+            blending={THREE.NormalBlending}
             uniforms={overlayUniforms}
             vertexShader={overlayVertexShader}
             fragmentShader={overlayFragmentShader}
           />
         </mesh>
 
-        {regions.map((region, index) => (
-          <EmotionMarker key={region.name} region={region} index={index} />
-        ))}
+        <mesh
+          geometry={normalized.geometry}
+          scale={1.01}
+          onPointerMove={(event) => {
+            event.stopPropagation()
+            if (outTimerRef.current) {
+              clearTimeout(outTimerRef.current)
+              outTimerRef.current = null
+            }
+
+            const localPoint = event.object.worldToLocal(event.point.clone())
+
+            const nearest = getNearestRegionIndex(localPoint)
+            const current = hoveredRegionRef.current
+
+            if (!nearest) {
+              // Evita flicker quando há micro-falhas de raycast perto dos limites.
+              if (current !== null) {
+                const currentDistance = getRegionDistance(localPoint, current)
+                if (currentDistance <= 1.16) {
+                  return
+                }
+              }
+
+              switchCandidateRef.current = null
+              if (current !== null) {
+                setHoveredRegionIndex(null)
+              }
+              return
+            }
+
+            if (current === nearest.index) {
+              switchCandidateRef.current = null
+              return
+            }
+
+            if (current !== null) {
+              const currentDistance = getRegionDistance(localPoint, current)
+
+              // Histerese + debounce: só troca se a nova região for claramente melhor
+              // e se a intenção persistir por alguns ms.
+              if (currentDistance <= 1.14) {
+                const isClearlyBetter = nearest.distance + 0.12 < currentDistance
+                if (!isClearlyBetter) {
+                  switchCandidateRef.current = null
+                  return
+                }
+
+                const now = performance.now()
+                const candidate = switchCandidateRef.current
+                if (!candidate || candidate.index !== nearest.index) {
+                  switchCandidateRef.current = { index: nearest.index, since: now }
+                  return
+                }
+
+                if (now - candidate.since < 120) {
+                  return
+                }
+
+                switchCandidateRef.current = null
+                setHoveredRegionIndex(nearest.index)
+                return
+              }
+            }
+
+            switchCandidateRef.current = null
+            setHoveredRegionIndex(nearest.index)
+          }}
+          onPointerOut={() => {
+            if (outTimerRef.current) {
+              clearTimeout(outTimerRef.current)
+            }
+
+            switchCandidateRef.current = null
+
+            outTimerRef.current = setTimeout(() => {
+              setHoveredRegionIndex(null)
+              outTimerRef.current = null
+            }, 160)
+          }}
+        >
+          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+        </mesh>
+
+        {hoveredRegion && (
+          <Html
+            position={[
+              hoveredRegion.position[0],
+              hoveredRegion.position[1] + 0.2,
+              hoveredRegion.position[2],
+            ]}
+            center
+          >
+            <div className="pointer-events-none select-none bg-card/95 backdrop-blur-sm border border-border rounded-md px-2 py-1.5 min-w-[clamp(120px,16vw,150px)] max-w-[clamp(150px,20vw,180px)] shadow-xl">
+              <p className="text-foreground font-semibold text-[clamp(10px,0.9vw,12px)] leading-tight">{hoveredRegion.name}</p>
+              <p className="text-[clamp(9px,0.8vw,11px)] font-semibold mt-0.5" style={{ color: hoveredRegion.color }}>
+                Emoção: {hoveredRegion.emotion}
+              </p>
+              <p className="text-muted-foreground text-[clamp(8px,0.72vw,10px)] mt-1 leading-snug">{hoveredRegion.description}</p>
+            </div>
+          </Html>
+        )}
       </group>
     </group>
   )
@@ -261,7 +382,7 @@ export function Brain3D() {
       <hemisphereLight intensity={0.38} color="#ffd4d4" groundColor="#0a0a12" />
       <directionalLight position={[4, 5, 5]} intensity={0.95} color="#fff0ef" />
       <directionalLight position={[-5, 2, -4]} intensity={0.34} color="#86a6ff" />
-      <pointLight position={[0, 2, 2]} intensity={0.45} color="#ffdede" distance={8} />
+      <pointLight position={[0, 2, 2]} intensity={0.52} color="#ffdede" distance={8} />
 
       <RealisticBrain />
 
@@ -272,8 +393,7 @@ export function Brain3D() {
         enableZoom={true}
         minDistance={3}
         maxDistance={8}
-        autoRotate
-        autoRotateSpeed={0.5}
+        autoRotate={false}
       />
     </Canvas>
   )

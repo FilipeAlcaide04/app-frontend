@@ -8,37 +8,42 @@ const agents = [
   {
     name: "Córtex Pré-frontal • Autocontrolo",
     description: "Planeamento, foco e decisões sob emoção",
-    color: "#00d4ff",
+    color: "#00f7ff",
+  },
+  {
+    name: "Córtex Parietal • Atenção",
+    description: "Integra sentidos e mantém atenção espacial",
+    color: "#ff35ff",
   },
   {
     name: "Amígdala • Medo",
     description: "Alerta emocional e resposta a ameaças",
-    color: "#ff3366",
+    color: "#ff1455",
   },
   {
     name: "Núcleo Accumbens • Prazer",
     description: "Recompensa, motivação e sensação de conquista",
-    color: "#ffd400",
+    color: "#fff000",
   },
   {
     name: "Hipocampo • Memória Afetiva",
     description: "Memórias ligadas a sentimentos e contexto",
-    color: "#00ff88",
+    color: "#00ff95",
   },
   {
     name: "Córtex Insular • Empatia",
     description: "Sensações internas e leitura emocional social",
-    color: "#ff8800",
+    color: "#ff7300",
   },
   {
     name: "Córtex Temporal • Vínculo Social",
     description: "Interpretação de voz, rosto e intenção",
-    color: "#a855f7",
+    color: "#bf00ff",
   },
   {
     name: "Lobo Occipital • Imaginação",
     description: "Visualização mental e criatividade",
-    color: "#3b82f6",
+    color: "#2390ff",
   },
 ]
 
