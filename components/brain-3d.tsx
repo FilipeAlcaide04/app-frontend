@@ -375,7 +375,6 @@ export function Brain3D() {
       className="w-full h-full"
       gl={{ antialias: true, alpha: true }}
     >
-      <color attach="background" args={["#0a0a12"]} />
       <fog attach="fog" args={["#0a0a12", 5.5, 13]} />
 
       <ambientLight intensity={0.48} />

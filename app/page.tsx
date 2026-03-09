@@ -4,6 +4,7 @@ import dynamic from "next/dynamic"
 import { Suspense, useState } from "react"
 import { ChatInterface } from "@/components/chat-interface"
 import { AgentLegend } from "@/components/agent-legend"
+import { StarField } from "@/components/star-field"
 import { Activity, Cpu } from "lucide-react"
 
 // Dynamic imports for 3D components to avoid SSR issues
@@ -25,7 +26,7 @@ const Brain3D = dynamic(
 
 function LoadingPlaceholder({ label }: { label: string }) {
   return (
-    <div className="w-full h-full flex items-center justify-center bg-background">
+    <div className="w-full h-full flex items-center justify-center">
       <div className="text-center">
         <div className="w-12 h-12 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
         <p className="text-muted-foreground text-sm">A carregar {label}...</p>
@@ -49,7 +50,8 @@ function StatusIndicator({ label, value, color }: { label: string; value: string
 
 export default function ConsciousnessInterface() {
   return (
-    <main className="min-h-[100dvh] w-full overflow-x-hidden bg-background">
+    <main className="min-h-[100dvh] w-full overflow-x-hidden">
+      <StarField />
       {/* Top Status Bar */}
       <header className="fixed top-0 left-0 right-0 z-20 px-3 sm:px-4 lg:px-6 py-2.5 sm:py-3 bg-card/50 backdrop-blur-md border-b border-border">
         <div className="flex items-center justify-between gap-3 max-w-screen-2xl mx-auto min-h-9">
