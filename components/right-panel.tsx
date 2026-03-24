@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Settings,
   Plus,
@@ -13,8 +13,10 @@ import {
   Brain,
   Menu,
   X,
+  Upload,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { VRMUploadModal } from "@/components/vrm-upload-modal"
 
 interface Agent {
   id: string
@@ -28,6 +30,8 @@ export function RightPanel() {
   const [activeTab, setActiveTab] = useState<"dashboard" | "agents" | "account" | "settings">("dashboard")
   const [selectedAgent, setSelectedAgent] = useState<string>("agent-1")
   const [isExpanded, setIsExpanded] = useState(true)
+  const [isVRMModalOpen, setIsVRMModalOpen] = useState(false)
+  const [customAvatarName, setCustomAvatarName] = useState<string | null>("VIPE_Hero.vrm")
   const [agents, setAgents] = useState<Agent[]>([
     { id: "agent-1", name: "Agente Principal", role: "Análise Lógica", status: "active", processingSpeed: 95 },
     { id: "agent-2", name: "Análise Contextual", role: "Processamento Semântico", status: "active", processingSpeed: 87 },
@@ -43,6 +47,10 @@ export function RightPanel() {
 
   const handleDeleteAgent = (id: string) => {
     setAgents(agents.filter(a => a.id !== id))
+  }
+
+  const handleVRMUpload = (url: string, fileName: string) => {
+    setCustomAvatarName(fileName)
   }
 
   return (
@@ -134,6 +142,17 @@ export function RightPanel() {
                 <div className="space-y-2 pt-2 border-t border-border/20">
                   <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider px-1">Ações Rápidas</h3>
                   <div className="space-y-2">
+                    <Button 
+                      variant="outline" 
+                      className="w-full justify-between h-9 text-xs"
+                      onClick={() => setIsVRMModalOpen(true)}
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <Upload className="w-3.5 h-3.5" />
+                        Avatar VRM
+                      </span>
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
                     <Button variant="outline" className="w-full justify-between h-9 text-xs">
                       <span>Nova Conversa</span>
                       <ChevronRight className="w-4 h-4" />
@@ -144,6 +163,14 @@ export function RightPanel() {
                     </Button>
                   </div>
                 </div>
+
+                {/* Current Avatar Info */}
+                {customAvatarName && (
+                  <div className="p-3 rounded-lg bg-accent/10 border border-accent/30">
+                    <p className="text-xs text-muted-foreground mb-1">Avatar Carregado</p>
+                    <p className="text-xs font-medium text-accent truncate">{customAvatarName}</p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -294,6 +321,13 @@ export function RightPanel() {
           </div>
         </>
       )}
+      
+      {/* VRM Upload Modal */}
+      <VRMUploadModal 
+        isOpen={isVRMModalOpen} 
+        onClose={() => setIsVRMModalOpen(false)}
+        onUpload={handleVRMUpload}
+      />
     </section>
   )
 }

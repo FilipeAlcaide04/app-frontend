@@ -12,7 +12,11 @@ interface Message {
   timestamp: Date
 }
 
-export function ChatInterface() {
+interface ChatInterfaceProps {
+  onBotMessage?: (text: string) => void
+}
+
+export function ChatInterface({ onBotMessage }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
@@ -55,6 +59,9 @@ export function ChatInterface() {
       }
       setMessages((prev) => [...prev, aiResponse])
       setIsTyping(false)
+      
+      // Trigger lip-sync for bot message
+      onBotMessage?.(aiResponse.text)
     }, 1500)
   }
 
