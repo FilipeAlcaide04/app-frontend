@@ -1,10 +1,11 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
-import * as THREE from "three"
+import { useEffect, useRef } from "react"
+import { Canvas, useFrame } from "@react-three/fiber"
+import { OrbitControls, Environment } from "@react-three/drei"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader"
 import { VRMLoaderPlugin } from "@pixiv/three-vrm"
-import { generateLipSyncFromText, applyLipSyncSequence } from "@/lib/lip-sync"
+import * as THREE from "three"
 
 export interface VRMAvatarProps {
   avatarUrl?: string
@@ -13,144 +14,68 @@ export interface VRMAvatarProps {
   onLipSyncEnd?: () => void
 }
 
-export function VRMAvatar({ avatarUrl = "/avatars/placeholder.vrm", onAvatarLoaded, onLipSyncStart, onLipSyncEnd }: VRMAvatarProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const sceneRef = useRef<THREE.Scene | null>(null)
-  const rendererRef = useRef<THREE.WebGLRenderer | null>(null)
+function VRMModel({ avatarUrl = "/avatars/placeholder.vrm", onAvatarLoaded }: { avatarUrl: string; onAvatarLoaded?: (vrm: any) => void }) {
   const vrmRef = useRef<any>(null)
   const mixerRef = useRef<any>(null)
   const clockRef = useRef(new THREE.Clock())
+  const loadedRef = useRef(false)
 
-  // Initialize Three.js scene
-  useEffect(() => {
-    if (!containerRef.current) return
-
-    // Scene setup
-    const scene = new THREE.Scene()
-    scene.background = new THREE.Color(0x1a1a2e) // Slight blue-dark instead of pure black
-    scene.fog = new THREE.Fog(0x1a1a2e, 5, 50)
-    sceneRef.current = scene
-
-    // Camera - adjusted for better avatar viewing
-    const camera = new THREE.PerspectiveCamera(
-      75,
-      containerRef.current.clientWidth / containerRef.current.clientHeight,
-      0.01,
-      100
-    )
-    camera.position.set(0, 1.4, 2.2)
-    camera.lookAt(0, 1.2, 0)
-
-    // Renderer
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
-    renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight)
-    renderer.setPixelRatio(window.devicePixelRatio)
-    renderer.outputColorSpace = THREE.SRGBColorSpace
-    renderer.toneMapping = THREE.ACESFilmicToneMapping
-    containerRef.current.appendChild(renderer.domElement)
-    rendererRef.current = renderer
-
-    // Better lighting setup
-    // Key light (from upper right)
-    const keyLight = new THREE.DirectionalLight(0xffffff, 2.0)
-    keyLight.position.set(2, 3, 2)
-    scene.add(keyLight)
-
-    // Fill light (from upper left, opposite direction)
-    const fillLight = new THREE.DirectionalLight(0x7fbfff, 1.0)
-    fillLight.position.set(-2, 2, 1)
-    scene.add(fillLight)
-
-    // Ambient light for overall brightness
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.2)
-    scene.add(ambientLight)
-
-    // Handle resize
-    const handleResize = () => {
-      if (!containerRef.current) return
-      const width = containerRef.current.clientWidth
-      const height = containerRef.current.clientHeight
-      camera.aspect = width / height
-      camera.updateProjectionMatrix()
-      renderer.setSize(width, height)
-    }
-
-    window.addEventListener("resize", handleResize)
-
-    // Animation loop
-    const animate = () => {
-      requestAnimationFrame(animate)
+  useFrame(() => {
+    if (vrmRef.current) {
       const deltaTime = clockRef.current.getDelta()
-
-      if (vrmRef.current) {
-        vrmRef.current.update(deltaTime)
-      }
-
+      vrmRef.current.update(deltaTime)
       if (mixerRef.current) {
         mixerRef.current.update(deltaTime)
       }
-
-      renderer.render(scene, camera)
     }
+  })
 
-    animate()
-
-    return () => {
-      window.removeEventListener("resize", handleResize)
-      containerRef.current?.removeChild(renderer.domElement)
-    }
-  }, [])
-
-  // Load VRM avatar
   useEffect(() => {
-    console.log("VRM Avatar useEffect triggered:", { avatarUrl, sceneRef: !!sceneRef.current })
-    
-    if (!avatarUrl || !sceneRef.current) {
-      console.log("Skipping VRM load:", { avatarUrl, sceneRef: !!sceneRef.current })
-      return
-    }
+    if (loadedRef.current) return
 
     const loadVRM = async () => {
       try {
-        console.log("Loading VRM from:", avatarUrl)
         const loader = new GLTFLoader()
         loader.register((parser) => new VRMLoaderPlugin(parser))
 
         loader.load(
           avatarUrl,
           (gltf) => {
-            console.log("VRM loaded successfully:", gltf)
             const vrm = gltf.userData.vrm
-
             if (!vrm) {
               console.error("No VRM data in loaded file")
               return
             }
 
-            // Remove old VRM if exists
-            if (vrmRef.current) {
-              sceneRef.current?.remove(vrmRef.current.scene)
+            vrmRef.current = vrm
+            loadedRef.current = true
+
+            // Close arms by rotating the bones
+            if (vrm.humanoid) {
+              const closeArms = (arm: any) => {
+                if (arm) {
+                  arm.rotation.z = Math.PI / 3 // Rotate inward
+                }
+              }
+              
+              closeArms(vrm.humanoid.getRawBoneNode('leftUpperArm'))
+              closeArms(vrm.humanoid.getRawBoneNode('rightUpperArm'))
+              closeArms(vrm.humanoid.getRawBoneNode('leftLowerArm'))
+              closeArms(vrm.humanoid.getRawBoneNode('rightLowerArm'))
             }
 
-            vrmRef.current = vrm
-            
-            // Scale and position the VRM avatar
-            vrm.scene.scale.set(1.2, 1.2, 1.2)
-            vrm.scene.position.set(0, 0, 0)
-            
-            sceneRef.current?.add(vrm.scene)
-            console.log("VRM added to scene with scale:", vrm.scene.scale)
-
-            // Setup animation mixer if needed
+            // Setup animation mixer
             const animations = gltf.animations
-            if (animations.length > 0 && !mixerRef.current) {
+            if (animations.length > 0) {
               mixerRef.current = new THREE.AnimationMixer(vrm.scene)
             }
 
             onAvatarLoaded?.(vrm)
+            console.log("VRM loaded successfully")
+            console.log("Available animations:", gltf.animations.map((a: any) => a.name))
           },
           (progress) => {
-            console.log("Loading progress:", (progress.loaded / progress.total) * 100 + "%")
+            console.log("Loading progress:", ((progress.loaded / progress.total) * 100).toFixed(0) + "%")
           },
           (error) => {
             console.error("Error loading VRM file:", error)
@@ -164,8 +89,39 @@ export function VRMAvatar({ avatarUrl = "/avatars/placeholder.vrm", onAvatarLoad
     loadVRM()
   }, [avatarUrl, onAvatarLoaded])
 
+  return vrmRef.current ? <primitive object={vrmRef.current.scene} scale={1.2} position={[0, -1.3, 0]} /> : null
+}
+
+export function VRMAvatar({ avatarUrl = "/avatars/placeholder.vrm", onAvatarLoaded }: VRMAvatarProps) {
   return (
-    <div ref={containerRef} className="w-full h-full" />
+    <Canvas
+      camera={{ position: [0, -1, 1.2], fov: 50 }}
+      className="w-full h-full"
+      gl={{ antialias: true, alpha: true }}
+    >
+      <fog attach="fog" args={["#0a0a12", 1, 10]} />
+
+      <ambientLight intensity={0.6} />
+      <hemisphereLight intensity={0.5} color="#ffd4d4" groundColor="#0a0a12" />
+      <directionalLight position={[4, 5, 5]} intensity={1.2} color="#fff0ef" />
+      <directionalLight position={[-5, 2, -4]} intensity={0.5} color="#86a6ff" />
+      <pointLight position={[0, 2, 2]} intensity={0.6} color="#ffdede" distance={8} />
+
+      <VRMModel avatarUrl={avatarUrl} onAvatarLoaded={onAvatarLoaded} />
+
+      <Environment preset="studio" />
+
+      <OrbitControls
+        enablePan={false}
+        enableZoom={true}
+        enableRotate={true}
+        minDistance={1}
+        maxDistance={4}
+        autoRotate={false}
+        minPolarAngle={Math.PI / 2}
+        maxPolarAngle={Math.PI / 2}
+      />
+    </Canvas>
   )
 }
 
