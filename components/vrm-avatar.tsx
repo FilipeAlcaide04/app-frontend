@@ -27,33 +27,42 @@ export function VRMAvatar({ avatarUrl = "/avatars/placeholder.vrm", onAvatarLoad
 
     // Scene setup
     const scene = new THREE.Scene()
-    scene.background = new THREE.Color(0x000000)
-    scene.fog = new THREE.Fog(0x000000, 0, 100)
+    scene.background = new THREE.Color(0x1a1a2e) // Slight blue-dark instead of pure black
+    scene.fog = new THREE.Fog(0x1a1a2e, 5, 50)
     sceneRef.current = scene
 
-    // Camera
+    // Camera - adjusted for better avatar viewing
     const camera = new THREE.PerspectiveCamera(
-      60,
+      75,
       containerRef.current.clientWidth / containerRef.current.clientHeight,
       0.01,
-      20
+      100
     )
-    camera.position.set(0, 1.2, 1.5)
-    camera.lookAt(0, 1, 0)
+    camera.position.set(0, 1.4, 2.2)
+    camera.lookAt(0, 1.2, 0)
 
     // Renderer
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
     renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight)
     renderer.setPixelRatio(window.devicePixelRatio)
+    renderer.outputColorSpace = THREE.SRGBColorSpace
+    renderer.toneMapping = THREE.ACESFilmicToneMapping
     containerRef.current.appendChild(renderer.domElement)
     rendererRef.current = renderer
 
-    // Lighting
-    const light = new THREE.DirectionalLight(0xffffff, 1.5)
-    light.position.set(0, 2, 1)
-    scene.add(light)
+    // Better lighting setup
+    // Key light (from upper right)
+    const keyLight = new THREE.DirectionalLight(0xffffff, 2.0)
+    keyLight.position.set(2, 3, 2)
+    scene.add(keyLight)
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8)
+    // Fill light (from upper left, opposite direction)
+    const fillLight = new THREE.DirectionalLight(0x7fbfff, 1.0)
+    fillLight.position.set(-2, 2, 1)
+    scene.add(fillLight)
+
+    // Ambient light for overall brightness
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.2)
     scene.add(ambientLight)
 
     // Handle resize
@@ -124,8 +133,13 @@ export function VRMAvatar({ avatarUrl = "/avatars/placeholder.vrm", onAvatarLoad
             }
 
             vrmRef.current = vrm
+            
+            // Scale and position the VRM avatar
+            vrm.scene.scale.set(1.2, 1.2, 1.2)
+            vrm.scene.position.set(0, 0, 0)
+            
             sceneRef.current?.add(vrm.scene)
-            console.log("VRM added to scene")
+            console.log("VRM added to scene with scale:", vrm.scene.scale)
 
             // Setup animation mixer if needed
             const animations = gltf.animations
