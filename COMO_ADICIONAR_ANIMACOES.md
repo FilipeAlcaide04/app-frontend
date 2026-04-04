@@ -2,6 +2,7 @@
 
 ## 🎯 Situação Atual
 
+
 O avatar está configurado para usar animações FBX diretamente do Mixamo! Basta baixar e colocar na pasta.
 
 ## ✅ Passos Simples (3 minutos por animação)
