@@ -5,6 +5,7 @@ import { StarField } from "@/components/star-field"
 import { LeftPanel } from "@/components/left-panel"
 import { CenterPanel } from "@/components/center-panel"
 import { RightPanel } from "@/components/right-panel"
+import { AuthGuard } from "@/components/auth-guard"
 import { Activity, Cpu } from "lucide-react"
 
 function StatusIndicator({ label, value, color }: { label: string; value: string; color: string }) {
@@ -22,6 +23,7 @@ function StatusIndicator({ label, value, color }: { label: string; value: string
 
 export default function ConsciousnessInterface() {
   return (
+    <AuthGuard>
     <main className="min-h-[100dvh] w-full overflow-x-hidden relative">
       {/* Background com StarField */}
       <div className="fixed inset-0 z-0">
@@ -73,5 +75,6 @@ export default function ConsciousnessInterface() {
         </div>
       </div>
     </main>
+    </AuthGuard>
   )
 }

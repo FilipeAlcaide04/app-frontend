@@ -12,12 +12,14 @@ import {
   Menu,
   X,
   Bell,
-  MoreVertical,
+  Shield,
 } from "lucide-react"
 import { useState } from "react"
+import { useAuth } from "@/hooks/use-auth"
 
 export function AuthNavbar() {
   const pathname = usePathname()
+  const { user, loading, isAuthenticated, isAdmin, logout } = useAuth()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const isActive = (path: string) => pathname === path || pathname?.startsWith(path + "/")
@@ -27,6 +29,8 @@ export function AuthNavbar() {
     { href: "/dashboard", label: "Dashboard", icon: Home },
     { href: "/settings", label: "Configurações", icon: Settings },
   ]
+
+  if (!user) return null
 
   return (
     <>
@@ -62,14 +66,24 @@ export function AuthNavbar() {
 
           {/* Right Actions */}
           <div className="flex items-center gap-2">
+            {isAdmin && (
+              <Link href="/admin">
+                <Button variant="ghost" size="icon" className="text-amber-400" title="Admin Panel">
+                  <Shield className="w-5 h-5" />
+                </Button>
+              </Link>
+            )}
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="w-5 h-5" />
               <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
             </Button>
-            <Button variant="ghost" size="icon">
-              <User className="w-5 h-5" />
-            </Button>
-            <Button variant="ghost" size="icon">
+            <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-card/30">
+              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary/30 to-accent/20 flex items-center justify-center text-xs font-semibold">
+                {user.name.charAt(0).toUpperCase()}
+              </div>
+              <span className="text-xs text-muted-foreground hidden lg:inline">{user.name}</span>
+            </div>
+            <Button variant="ghost" size="icon" onClick={logout} title="Sair">
               <LogOut className="w-5 h-5" />
             </Button>
           </div>
@@ -121,11 +135,30 @@ export function AuthNavbar() {
               )
             })}
             <div className="border-t border-white/5 my-2 pt-2 space-y-2">
-              <button className="w-full text-left px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-white/5 transition-colors">
-                <User className="w-4 h-4" />
-                Perfil
-              </button>
-              <button className="w-full text-left px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-white/5 transition-colors text-red-400">
+              {isAdmin && (
+                <Link href="/admin">
+                  <button
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="w-full text-left px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-white/5 transition-colors text-amber-400"
+                  >
+                    <Shield className="w-4 h-4" />
+                    Admin Panel
+                  </button>
+                </Link>
+              )}
+              <div className="flex items-center gap-2 px-3 py-2">
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary/30 to-accent/20 flex items-center justify-center text-xs font-semibold">
+                  {user.name.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <p className="text-sm font-medium">{user.name}</p>
+                  <p className="text-xs text-muted-foreground">{user.email}</p>
+                </div>
+              </div>
+              <button
+                onClick={logout}
+                className="w-full text-left px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-white/5 transition-colors text-red-400"
+              >
                 <LogOut className="w-4 h-4" />
                 Sair
               </button>
