@@ -93,6 +93,44 @@ export async function createAgent(payload: CreateAgentPayload): Promise<Agent> {
   })
 }
 
+export interface CreatePersonaPayload {
+  name: string
+  description?: string
+  avatar?: string
+  background_story?: string
+  persona?: Record<string, any>
+  personality_traits?: Record<string, number>
+  thinking_style?: string
+  decision_making_approach?: string
+  debate_intensity?: number
+  micro_agent_types?: string[]
+  initial_memories?: {
+    title: string
+    content: string
+    type?: string
+    importance_score?: number
+    emotional_valence?: number
+  }[]
+}
+
+export async function createPersona(payload: CreatePersonaPayload): Promise<{ status: string; human: { id: string } }> {
+  return apiFetch("/personas", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function getPersonaBlueprint(agentId: string): Promise<Record<string, any>> {
+  return apiFetch(`/personas/${agentId}/blueprint`)
+}
+
+export async function updatePersonaBlueprint(agentId: string, section: string, data: Record<string, any>): Promise<any> {
+  return apiFetch(`/personas/${agentId}/blueprint`, {
+    method: "PUT",
+    body: JSON.stringify({ section, data }),
+  })
+}
+
 export async function updateAgent(id: string, updates: Partial<CreateAgentPayload> & { is_active?: boolean }): Promise<Agent> {
   return apiFetch(`/agents/${id}`, {
     method: "PUT",

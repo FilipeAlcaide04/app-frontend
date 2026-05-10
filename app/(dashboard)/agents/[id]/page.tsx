@@ -14,7 +14,6 @@ import {
   Database,
   FileText,
   Loader2,
-  Save,
   X,
   AlertCircle,
   Brain,
@@ -81,7 +80,6 @@ export default function AgentDetailPage() {
   const [memories, setMemories] = useState<MemoryInfo[]>([])
   const [documents, setDocuments] = useState<DocInfo[]>([])
 
-  const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
@@ -211,10 +209,12 @@ export default function AgentDetailPage() {
           >
             <Power className="w-3.5 h-3.5" />
           </Button>
-          <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={() => setEditOpen(true)}>
-            <Edit2 className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Editar</span>
-          </Button>
+          <Link href={`/agents/${agent.id}/edit`}>
+            <Button variant="outline" size="sm" className="h-8 gap-1.5">
+              <Edit2 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Editar</span>
+            </Button>
+          </Link>
           <Button size="sm" className="h-8 gap-1.5" onClick={() => router.push(`/?agent=${agent.id}`)}>
             <MessageSquareText className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Conversar</span>
@@ -263,16 +263,7 @@ export default function AgentDetailPage() {
         </div>
       )}
 
-      {editOpen && (
-        <EditModal
-          agent={agent}
-          onClose={() => setEditOpen(false)}
-          onSaved={(a) => {
-            setAgent(a)
-            setEditOpen(false)
-          }}
-        />
-      )}
+      {/* Edit is now a full page at /agents/[id]/edit */}
       {deleteOpen && (
         <ConfirmDeleteModal
           agent={agent}
@@ -454,143 +445,6 @@ function DocumentsTab({ items }: { items: DocInfo[] }) {
           </div>
         </Card>
       ))}
-    </div>
-  )
-}
-
-/* Modals */
-
-function EditModal({
-  agent,
-  onClose,
-  onSaved,
-}: {
-  agent: Agent
-  onClose: () => void
-  onSaved: (a: Agent) => void
-}) {
-  const [name, setName] = useState(agent.name)
-  const [description, setDescription] = useState(agent.description || "")
-  const [avatar, setAvatar] = useState(agent.avatar || "🤖")
-  const [backgroundStory, setBackgroundStory] = useState(agent.background_story || "")
-  const [thinkingStyle, setThinkingStyle] = useState(agent.thinking_style)
-  const [decision, setDecision] = useState(agent.decision_making_approach)
-  const [debate, setDebate] = useState(agent.debate_intensity)
-  const [saving, setSaving] = useState(false)
-  const [err, setErr] = useState<string | null>(null)
-
-  const save = async () => {
-    setSaving(true)
-    setErr(null)
-    try {
-      const updated = await updateAgent(agent.id, {
-        name: name.trim(),
-        description: description.trim() || undefined,
-        avatar,
-        background_story: backgroundStory.trim() || undefined,
-        thinking_style: thinkingStyle,
-        decision_making_approach: decision,
-        debate_intensity: debate,
-      } as any)
-      onSaved(updated)
-    } catch (e: any) {
-      setErr(e?.message || "Falha ao guardar")
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-lg rounded-lg border border-border bg-card shadow-xl max-h-[90vh] overflow-y-auto">
-        <div className="p-5 border-b border-border/40 flex items-center justify-between">
-          <h2 className="text-sm font-semibold">Editar agente</h2>
-          <button onClick={onClose} className="p-1 rounded-md hover:bg-muted">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-        <div className="p-5 space-y-4">
-          {err && (
-            <div className="rounded-md border border-red-500/20 bg-red-500/5 p-2.5 text-xs text-red-400">
-              {err}
-            </div>
-          )}
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Avatar</label>
-            <Input value={avatar} onChange={(e) => setAvatar(e.target.value.slice(0, 4))} maxLength={4} className="w-20 text-center text-lg h-9" />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Nome</label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} className="h-9 text-sm" />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Descrição</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-3 py-2 rounded-md border border-border bg-background text-sm resize-none focus:outline-none focus:ring-1 focus:ring-ring"
-              rows={3}
-            />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">História de fundo</label>
-            <textarea
-              value={backgroundStory}
-              onChange={(e) => setBackgroundStory(e.target.value)}
-              className="w-full px-3 py-2 rounded-md border border-border bg-background text-sm resize-none focus:outline-none focus:ring-1 focus:ring-ring"
-              rows={4}
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Estilo</label>
-              <select
-                value={thinkingStyle}
-                onChange={(e) => setThinkingStyle(e.target.value)}
-                className="w-full h-9 rounded-md border border-border bg-background px-2.5 text-sm"
-              >
-                {THINKING_STYLES.map((s) => (
-                  <option key={s.value} value={s.value}>{s.label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Decisão</label>
-              <select
-                value={decision}
-                onChange={(e) => setDecision(e.target.value)}
-                className="w-full h-9 rounded-md border border-border bg-background px-2.5 text-sm"
-              >
-                {DECISION_APPROACHES.map((s) => (
-                  <option key={s.value} value={s.value}>{s.label}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div>
-            <div className="flex items-center justify-between text-xs mb-1.5">
-              <label className="font-medium text-muted-foreground">Intensidade de debate</label>
-              <span className="font-mono text-muted-foreground">{debate.toFixed(2)}</span>
-            </div>
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.05}
-              value={debate}
-              onChange={(e) => setDebate(Number(e.target.value))}
-              className="w-full accent-primary"
-            />
-          </div>
-        </div>
-        <div className="p-5 border-t border-border/40 flex justify-end gap-2">
-          <Button variant="outline" size="sm" onClick={onClose} disabled={saving}>Cancelar</Button>
-          <Button size="sm" onClick={save} disabled={saving || !name.trim()} className="gap-1.5">
-            {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-            Guardar
-          </Button>
-        </div>
-      </div>
     </div>
   )
 }
