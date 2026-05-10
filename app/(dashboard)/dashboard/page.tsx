@@ -1,171 +1,273 @@
 "use client"
 
+import { useEffect, useState } from "react"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { LineChart, BarChart3, TrendingUp, Activity, Brain, Users } from "lucide-react"
+import {
+  Brain,
+  Database,
+  FileText,
+  MessageSquare,
+  Sparkles,
+  Zap,
+  Clock,
+  Loader2,
+  AlertCircle,
+  RefreshCw,
+  ArrowRight,
+  Activity,
+} from "lucide-react"
+import { useAuth } from "@/hooks/use-auth"
+import { getDashboardStats } from "@/lib/auth"
+import { formatRelativeDate } from "@/lib/agents"
 
-export default function DashboardAnalyticsPage() {
-  const chartData = [
-    { month: "Jan", value: 240 },
-    { month: "Fev", value: 340 },
-    { month: "Mar", value: 200 },
-    { month: "Abr", value: 500 },
-    { month: "Mai", value: 780 },
-    { month: "Jun", value: 690 },
-  ]
+interface DashboardData {
+  totals: {
+    agents: number
+    active_agents: number
+    memories: number
+    documents: number
+    micro_agents: number
+    conversations: number
+    messages: number
+    learning_events: number
+    synaptic_connections: number
+  }
+  agents: {
+    id: string
+    name: string
+    avatar: string
+    is_active: boolean
+    thinking_style: string
+    memories: number
+    documents: number
+    conversations: number
+    messages: number
+    last_interaction: string | null
+    created_at: string | null
+  }[]
+  recent_conversations: {
+    id: string
+    agent_id: string
+    agent_name: string
+    agent_avatar: string
+    message_count: number
+    current_topic: string | null
+    emotional_tone: string | null
+    started_at: string | null
+    is_active: boolean
+  }[]
+  user: {
+    name: string
+    created_at: string | null
+  }
+}
 
-  const maxValue = Math.max(...chartData.map((d) => d.value))
+export default function DashboardPage() {
+  const { user } = useAuth()
+  const [data, setData] = useState<DashboardData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchStats = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const stats = await getDashboardStats()
+      setData(stats)
+    } catch (err: any) {
+      setError(err?.message || "Erro ao carregar dashboard")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchStats()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (error || !data) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="w-8 h-8 text-red-400/60 mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground mb-4">{error}</p>
+          <Button onClick={fetchStats} variant="outline" size="sm" className="gap-1.5">
+            <RefreshCw className="w-3.5 h-3.5" />
+            Tentar novamente
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  const t = data.totals
+  const sortedAgents = [...data.agents].sort((a, b) => b.messages - a.messages)
+  const topAgent = sortedAgents[0]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-card/20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold mb-2">Analytics</h1>
-          <p className="text-muted-foreground">Análise detalhada do desempenho dos teus agentes</p>
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Olá, {user?.name || "—"}
+          </p>
         </div>
+        <Button variant="ghost" size="sm" onClick={fetchStats} className="h-8 px-2">
+          <RefreshCw className="w-3.5 h-3.5" />
+        </Button>
+      </div>
 
-        {/* KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="glass-subtle rounded-2xl p-6 border border-white/5">
-            <div className="flex items-start justify-between mb-4">
-              <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400">
-                <Brain className="w-5 h-5" />
-              </div>
-              <span className="text-xs font-medium px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-300">
-                ↑ 12%
-              </span>
-            </div>
-            <p className="text-sm text-muted-foreground/80 mb-1">Agentes Ativos</p>
-            <p className="text-3xl font-bold">8</p>
-          </div>
+      {/* Stats grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3 mb-8">
+        <StatCard label="Agentes" value={t.agents} sub={`${t.active_agents} ativos`} icon={<Brain className="w-4 h-4" />} />
+        <StatCard label="Memórias" value={t.memories} icon={<Database className="w-4 h-4" />} />
+        <StatCard label="Mensagens" value={t.messages} sub={`${t.conversations} conversas`} icon={<MessageSquare className="w-4 h-4" />} />
+        <StatCard label="Documentos" value={t.documents} icon={<FileText className="w-4 h-4" />} />
+      </div>
 
-          <div className="glass-subtle rounded-2xl p-6 border border-white/5">
-            <div className="flex items-start justify-between mb-4">
-              <div className="p-2 rounded-lg bg-purple-500/10 text-purple-400">
-                <Activity className="w-5 h-5" />
-              </div>
-              <span className="text-xs font-medium px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-300">
-                ↑ 24%
-              </span>
-            </div>
-            <p className="text-sm text-muted-foreground/80 mb-1">Requisições/dia</p>
-            <p className="text-3xl font-bold">2.4K</p>
-          </div>
-
-          <div className="glass-subtle rounded-2xl p-6 border border-white/5">
-            <div className="flex items-start justify-between mb-4">
-              <div className="p-2 rounded-lg bg-green-500/10 text-green-400">
-                <TrendingUp className="w-5 h-5" />
-              </div>
-              <span className="text-xs font-medium px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-300">
-                ↑ 8%
-              </span>
-            </div>
-            <p className="text-sm text-muted-foreground/80 mb-1">Taxa de Sucesso</p>
-            <p className="text-3xl font-bold">91.2%</p>
-          </div>
-
-          <div className="glass-subtle rounded-2xl p-6 border border-white/5">
-            <div className="flex items-start justify-between mb-4">
-              <div className="p-2 rounded-lg bg-amber-500/10 text-amber-400">
-                <Users className="w-5 h-5" />
-              </div>
-              <span className="text-xs font-medium px-2 py-1 rounded-full bg-red-500/20 text-red-300">
-                ↓ 2%
-              </span>
-            </div>
-            <p className="text-sm text-muted-foreground/80 mb-1">Tempo Médio Resp.</p>
-            <p className="text-3xl font-bold">1.1s</p>
+      {/* Secondary stats */}
+      <div className="grid grid-cols-3 gap-3 mb-8">
+        <div className="rounded-lg border border-border/60 bg-card p-4 flex items-center gap-3">
+          <Activity className="w-4 h-4 text-muted-foreground" />
+          <div>
+            <p className="text-lg font-semibold leading-none">{t.micro_agents}</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Micro-agentes</p>
           </div>
         </div>
-
-        {/* Charts */}
-        <div className="grid lg:grid-cols-2 gap-6">
-          {/* Line Chart */}
-          <div className="glass-subtle rounded-2xl p-6 border border-white/5">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold">Requisições Mensais</h2>
-              <select className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-sm outline-none hover:bg-white/10 transition-colors">
-                <option>Últimos 6 meses</option>
-                <option>Últimos 12 meses</option>
-              </select>
-            </div>
-
-            <div className="h-64 flex items-end justify-between gap-2">
-              {chartData.map((data, idx) => (
-                <div key={idx} className="flex flex-col items-center flex-1">
-                  <div
-                    className="w-full bg-gradient-to-t from-primary to-accent rounded-t-lg transition-all hover:opacity-80"
-                    style={{ height: `${(data.value / maxValue) * 100}%` }}
-                  />
-                  <p className="text-xs text-muted-foreground mt-2">{data.month}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Top Agents */}
-          <div className="glass-subtle rounded-2xl p-6 border border-white/5">
-            <h2 className="text-lg font-semibold mb-6">Agentes de Melhor Desempenho</h2>
-            <div className="space-y-4">
-              {[
-                { name: "Analisador Lógico", emoji: "🧠", value: 94, bg: "bg-blue-500" },
-                { name: "Arquivista de Memória", emoji: "📚", value: 92, bg: "bg-amber-500" },
-                { name: "Conselheiro Emocional", emoji: "💙", value: 89, bg: "bg-rose-500" },
-              ].map((agent, idx) => (
-                <div key={idx}>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-2xl">{agent.emoji}</span>
-                      <p className="font-medium text-sm">{agent.name}</p>
-                    </div>
-                    <p className="font-semibold text-sm">{agent.value}%</p>
-                  </div>
-                  <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full ${agent.bg}`}
-                      style={{ width: `${agent.value}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
+        <div className="rounded-lg border border-border/60 bg-card p-4 flex items-center gap-3">
+          <Zap className="w-4 h-4 text-muted-foreground" />
+          <div>
+            <p className="text-lg font-semibold leading-none">{t.synaptic_connections}</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Sinapses</p>
           </div>
         </div>
-
-        {/* Recent Activity */}
-        <div className="glass-subtle rounded-2xl p-6 border border-white/5 mt-6">
-          <h2 className="text-lg font-semibold mb-6">Atividade Recente</h2>
-          <div className="space-y-3">
-            {[
-              { time: "há 2h", action: "Novo agente criado", agent: "Gerador Criativo", status: "success" },
-              {
-                time: "há 4h",
-                action: "Performance de agente atualizada",
-                agent: "Analisador Lógico",
-                status: "success",
-              },
-              {
-                time: "há 1 dia",
-                action: "Base de conhecimento adicionada",
-                agent: "Conselheiro Emocional",
-                status: "warning",
-              },
-            ].map((activity, idx) => (
-              <div
-                key={idx}
-                className="flex items-center justify-between p-4 rounded-lg border border-white/5 hover:border-white/10 transition-all"
-              >
-                <div>
-                  <p className="font-medium text-sm">{activity.action}</p>
-                  <p className="text-xs text-muted-foreground/70">{activity.agent}</p>
-                </div>
-                <p className="text-xs text-muted-foreground">{activity.time}</p>
-              </div>
-            ))}
+        <div className="rounded-lg border border-border/60 bg-card p-4 flex items-center gap-3">
+          <Sparkles className="w-4 h-4 text-muted-foreground" />
+          <div>
+            <p className="text-lg font-semibold leading-none">{t.learning_events}</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Aprendizagens</p>
           </div>
         </div>
       </div>
+
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* Agents */}
+        <div className="rounded-lg border border-border/60 bg-card">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-border/40">
+            <h2 className="text-sm font-medium">Agentes por atividade</h2>
+            <Link href="/agents" className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+              Ver todos <ArrowRight className="w-3 h-3" />
+            </Link>
+          </div>
+
+          {sortedAgents.length === 0 ? (
+            <div className="text-center py-12 px-5">
+              <p className="text-sm text-muted-foreground mb-3">Ainda sem agentes.</p>
+              <Link href="/agents/create">
+                <Button size="sm" className="gap-1.5 h-8">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Criar agente
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            <div className="divide-y divide-border/30">
+              {sortedAgents.map((agent) => {
+                const maxMsgs = topAgent?.messages || 1
+                const pct = Math.max(3, Math.round((agent.messages / maxMsgs) * 100))
+                return (
+                  <Link key={agent.id} href={`/?agent=${agent.id}`} className="block">
+                    <div className="px-5 py-3 hover:bg-muted/30 transition-colors">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className="text-base shrink-0">{agent.avatar || "🤖"}</span>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">{agent.name}</p>
+                            <p className="text-[11px] text-muted-foreground">
+                              {agent.messages} msg · {agent.conversations} conversas
+                            </p>
+                          </div>
+                        </div>
+                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${agent.is_active ? "bg-emerald-500" : "bg-muted-foreground/30"}`} />
+                      </div>
+                      <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-foreground/20 rounded-full"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  </Link>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Recent Conversations */}
+        <div className="rounded-lg border border-border/60 bg-card">
+          <div className="px-5 py-4 border-b border-border/40">
+            <h2 className="text-sm font-medium">Conversas recentes</h2>
+          </div>
+
+          {data.recent_conversations.length === 0 ? (
+            <div className="text-center py-12 px-5">
+              <p className="text-sm text-muted-foreground">Ainda sem conversas.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border/30">
+              {data.recent_conversations.map((conv) => (
+                <Link key={conv.id} href={`/?agent=${conv.agent_id}`} className="block">
+                  <div className="px-5 py-3 hover:bg-muted/30 transition-colors flex items-center justify-between">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="text-base shrink-0">{conv.agent_avatar || "🤖"}</span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{conv.agent_name}</p>
+                        <p className="text-[11px] text-muted-foreground truncate">
+                          {conv.current_topic || `${conv.message_count} mensagens`}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0 ml-3">
+                      <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {formatRelativeDate(conv.started_at)}
+                      </p>
+                      {conv.is_active && (
+                        <span className="text-[10px] text-emerald-500 font-medium">ativa</span>
+                      )}
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function StatCard({ label, value, sub, icon }: { label: string; value: number; sub?: string; icon: React.ReactNode }) {
+  return (
+    <div className="rounded-lg border border-border/60 bg-card p-4">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-muted-foreground">{icon}</span>
+      </div>
+      <p className="text-2xl font-semibold tracking-tight">{value}</p>
+      <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
+      {sub && <p className="text-[11px] text-muted-foreground/60 mt-0.5">{sub}</p>}
     </div>
   )
 }

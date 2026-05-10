@@ -1,230 +1,729 @@
 "use client"
 
-import { useState } from "react"
-import { useParams } from "next/navigation"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import Link from "next/link"
+import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
   ArrowLeft,
   Edit2,
-  Share2,
   Trash2,
-  Play,
-  BarChart3,
-  Clock,
-  MessageSquare,
-  TrendingUp,
-  Settings,
+  MessageSquareText,
+  Sparkles,
+  Database,
+  FileText,
+  Loader2,
+  Save,
+  X,
+  AlertCircle,
+  Brain,
+  Zap,
+  Activity,
+  RefreshCw,
   Copy,
-  Download,
+  Check,
+  Power,
 } from "lucide-react"
+import {
+  Agent,
+  getAgent,
+  updateAgent,
+  deleteAgent,
+  getAgentMicroAgents,
+  getAgentMemories,
+  getAgentDocuments,
+  agentArchetype,
+  formatRelativeDate,
+  PERSONALITY_LABELS,
+  THINKING_STYLES,
+  DECISION_APPROACHES,
+} from "@/lib/agents"
+
+type Tab = "overview" | "memory" | "micro" | "docs"
+
+interface MicroAgentInfo {
+  id: string
+  type_name?: string
+  type?: { name?: string; category?: string }
+  custom_weight?: number | null
+  activation_enabled?: boolean
+  confidence_level?: number
+  current_focus?: string | null
+}
+
+interface MemoryInfo {
+  id: string
+  title: string
+  type?: string
+  importance_score?: number
+  emotional_valence?: number
+}
+
+interface DocInfo {
+  id: string
+  filename?: string
+  description?: string
+}
 
 export default function AgentDetailPage() {
   const params = useParams<{ id: string }>()
-  const [isEditing, setIsEditing] = useState(false)
+  const router = useRouter()
+  const agentId = params.id
 
-  // Mock agent data
-  const agent = {
-    id: params.id ?? "",
-    name: "Analisador Lógico",
-    emoji: "🧠",
-    description: "Especializado em análise crítica e resolução de problemas complexos com pensamento estruturado",
-    type: "logic",
-    status: "active",
-    created: "2024-01-15",
-    lastActive: "há 2 min",
-    conversations: 847,
-    performance: 94,
-    successRate: 92,
-    averageResponseTime: "1.2s",
-    systemPrompt:
-      "Você é um analisador lógico especializado em quebrar problemas complexos em componentes gerenciáveis. Você pensa estruturadamente, considera múltiplas perspectivas e fornece soluções baseadas em evidências.",
-    knowledgeBases: 5,
-    trainingDataSize: "2.4GB",
-    version: "2.1.0",
-    lastUpdated: "2024-03-15",
+  const [agent, setAgent] = useState<Agent | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const [tab, setTab] = useState<Tab>("overview")
+
+  const [microAgents, setMicroAgents] = useState<MicroAgentInfo[]>([])
+  const [memories, setMemories] = useState<MemoryInfo[]>([])
+  const [documents, setDocuments] = useState<DocInfo[]>([])
+
+  const [editOpen, setEditOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  const fetchAgent = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const data = await getAgent(agentId)
+      setAgent(data)
+    } catch (err: any) {
+      setError(err?.message || "Falha ao carregar agente")
+    } finally {
+      setLoading(false)
+    }
+  }, [agentId])
+
+  useEffect(() => {
+    fetchAgent()
+  }, [fetchAgent])
+
+  useEffect(() => {
+    if (!agent) return
+    getAgentMicroAgents(agentId)
+      .then((r) => setMicroAgents(r?.micro_agents || []))
+      .catch(() => setMicroAgents([]))
+    getAgentMemories(agentId)
+      .then((r) => setMemories(r?.memories || []))
+      .catch(() => setMemories([]))
+    getAgentDocuments(agentId)
+      .then((r) => setDocuments(r?.documents || []))
+      .catch(() => setDocuments([]))
+  }, [agent, agentId])
+
+  const archetype = useMemo(() => (agent ? agentArchetype(agent) : null), [agent])
+
+  const handleDelete = async () => {
+    setDeleting(true)
+    try {
+      await deleteAgent(agentId)
+      router.push("/agents")
+    } catch (err: any) {
+      setError(err?.message || "Falha ao apagar")
+    } finally {
+      setDeleting(false)
+    }
   }
 
-  const recentConversations = [
-    { id: 1, topic: "Estratégia de marketing", duration: "12 min", date: "Hoje" },
-    { id: 2, topic: "Análise de dados", duration: "8 min", date: "Ontem" },
-    { id: 3, topic: "Resolução de problemas", duration: "15 min", date: "2 dias atrás" },
-  ]
+  const toggleActive = async () => {
+    if (!agent) return
+    try {
+      const updated = await updateAgent(agentId, { is_active: !agent.is_active } as any)
+      setAgent(updated)
+    } catch (err: any) {
+      setError(err?.message || "Falha ao atualizar")
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (!agent) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center p-6">
+        <div className="max-w-xs text-center">
+          <AlertCircle className="w-8 h-8 mx-auto mb-3 text-red-400/60" />
+          <h2 className="text-sm font-semibold mb-1">Agente não encontrado</h2>
+          <p className="text-xs text-muted-foreground mb-4">{error || "Este agente não existe ou não tens acesso."}</p>
+          <Link href="/agents">
+            <Button variant="outline" size="sm" className="gap-1.5">
+              <ArrowLeft className="w-3.5 h-3.5" /> Voltar
+            </Button>
+          </Link>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-card/20">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
       {/* Header */}
-      <div className="border-b border-border/30 glass-subtle backdrop-blur-xl sticky top-0 z-30">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" className="rounded-lg -ml-2">
-                <ArrowLeft className="w-5 h-5" />
-              </Button>
-              <div>
-                <h1 className="text-2xl font-bold">{agent.name}</h1>
-                <p className="text-sm text-muted-foreground">ID: {agent.id}</p>
-              </div>
+      <div className="flex items-start justify-between gap-4 mb-6">
+        <div className="flex items-center gap-3 min-w-0">
+          <Link href="/agents">
+            <Button variant="ghost" size="sm" className="h-8 px-2">
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
+          </Link>
+          <span className="text-2xl shrink-0">{agent.avatar || "🤖"}</span>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-lg font-semibold truncate">{agent.name}</h1>
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium ${
+                agent.is_active
+                  ? "bg-emerald-500/10 text-emerald-400"
+                  : "bg-muted text-muted-foreground"
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${agent.is_active ? "bg-emerald-500" : "bg-muted-foreground/40"}`} />
+                {agent.is_active ? "Ativo" : "Inativo"}
+              </span>
+              {archetype && (
+                <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-muted text-muted-foreground">
+                  {archetype.emoji} {archetype.label}
+                </span>
+              )}
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="gap-2 hidden sm:flex">
-                <Share2 className="w-4 h-4" />
-                Partilhar
-              </Button>
-              <Button variant="outline" size="sm" className="gap-2">
-                <Edit2 className="w-4 h-4" />
-                <span className="hidden sm:inline">Editar</span>
-              </Button>
-              <Button size="sm" className="gap-2">
-                <Play className="w-4 h-4" />
-                Executar
-              </Button>
-            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Criado {formatRelativeDate(agent.created_at)}
+            </p>
           </div>
         </div>
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          <Button variant="ghost" size="sm" onClick={fetchAgent} disabled={loading} className="h-8 px-2">
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={toggleActive}
+            className="h-8 px-2"
+            title={agent.is_active ? "Desativar" : "Ativar"}
+          >
+            <Power className="w-3.5 h-3.5" />
+          </Button>
+          <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={() => setEditOpen(true)}>
+            <Edit2 className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Editar</span>
+          </Button>
+          <Button size="sm" className="h-8 gap-1.5" onClick={() => router.push(`/?agent=${agent.id}`)}>
+            <MessageSquareText className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Conversar</span>
+          </Button>
+        </div>
       </div>
+
+      {/* Tabs */}
+      <div className="flex gap-0.5 mb-6 border-b border-border/40 -mx-1 px-1">
+        <TabBtn active={tab === "overview"} onClick={() => setTab("overview")} icon={<Brain className="w-3.5 h-3.5" />}>Visão Geral</TabBtn>
+        <TabBtn active={tab === "micro"} onClick={() => setTab("micro")} icon={<Sparkles className="w-3.5 h-3.5" />}>Micro-agentes <Badge>{microAgents.length}</Badge></TabBtn>
+        <TabBtn active={tab === "memory"} onClick={() => setTab("memory")} icon={<Database className="w-3.5 h-3.5" />}>Memórias <Badge>{memories.length}</Badge></TabBtn>
+        <TabBtn active={tab === "docs"} onClick={() => setTab("docs")} icon={<FileText className="w-3.5 h-3.5" />}>Documentos <Badge>{documents.length}</Badge></TabBtn>
+      </div>
+
+      {/* Error */}
+      {error && (
+        <div className="mb-6 rounded-md border border-red-500/20 bg-red-500/5 p-3 text-sm text-red-400 flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          {error}
+        </div>
+      )}
 
       {/* Content */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Main grid */}
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* Left column - Main info */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Agent overview card */}
-            <div className="glass-subtle rounded-2xl p-6 border border-white/5">
-              <div className="flex items-start gap-4 mb-6">
-                <div className="text-6xl">{agent.emoji}</div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                      Ativo
-                    </span>
-                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                      Lógico
-                    </span>
-                  </div>
-                  <h2 className="text-2xl font-bold mb-2">{agent.name}</h2>
-                  <p className="text-sm text-muted-foreground/80">{agent.description}</p>
-                </div>
-              </div>
+      {tab === "overview" && <OverviewTab agent={agent} />}
+      {tab === "micro" && <MicroAgentsTab items={microAgents} />}
+      {tab === "memory" && <MemoriesTab items={memories} />}
+      {tab === "docs" && <DocumentsTab items={documents} />}
 
-              {/* Quick stats */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-6 border-t border-white/5">
-                <div>
-                  <p className="text-xs text-muted-foreground/60 uppercase tracking-wide mb-1">Conversas</p>
-                  <p className="text-2xl font-bold">{agent.conversations}</p>
+      {/* Danger zone */}
+      {tab === "overview" && (
+        <div className="mt-8 rounded-lg border border-red-500/20 bg-red-500/5 p-5">
+          <h3 className="text-sm font-medium text-red-400 mb-1">Zona de risco</h3>
+          <p className="text-xs text-muted-foreground mb-3">
+            Apagar o agente remove permanentemente todas as memórias, documentos e conversas.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setDeleteOpen(true)}
+            className="text-red-400 border-red-500/20 hover:bg-red-500/10 h-8"
+          >
+            <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+            Apagar agente
+          </Button>
+        </div>
+      )}
+
+      {editOpen && (
+        <EditModal
+          agent={agent}
+          onClose={() => setEditOpen(false)}
+          onSaved={(a) => {
+            setAgent(a)
+            setEditOpen(false)
+          }}
+        />
+      )}
+      {deleteOpen && (
+        <ConfirmDeleteModal
+          agent={agent}
+          loading={deleting}
+          onCancel={() => setDeleteOpen(false)}
+          onConfirm={handleDelete}
+        />
+      )}
+    </div>
+  )
+}
+
+function OverviewTab({ agent }: { agent: Agent }) {
+  const traits = agent.personality_traits || {}
+  return (
+    <div className="grid lg:grid-cols-3 gap-5">
+      <div className="lg:col-span-2 space-y-5">
+        <Card>
+          <CardHeader title="Identidade" subtitle="Descrição e história de fundo." />
+          {agent.description ? (
+            <p className="text-sm text-foreground/90 leading-relaxed mb-3">{agent.description}</p>
+          ) : (
+            <p className="text-xs text-muted-foreground italic mb-3">Sem descrição.</p>
+          )}
+          {agent.background_story && (
+            <div className="rounded-md bg-muted/30 border border-border/40 p-3 text-sm text-foreground/85 leading-relaxed whitespace-pre-wrap">
+              {agent.background_story}
+            </div>
+          )}
+        </Card>
+
+        <Card>
+          <CardHeader title="Cognição" subtitle="Estilo de pensamento e decisão." />
+          <div className="grid sm:grid-cols-3 gap-3">
+            <Fact label="Pensamento" value={THINKING_STYLES.find((s) => s.value === agent.thinking_style)?.label || agent.thinking_style} />
+            <Fact label="Decisão" value={DECISION_APPROACHES.find((s) => s.value === agent.decision_making_approach)?.label || agent.decision_making_approach} />
+            <Fact label="Debate" value={agent.debate_intensity.toFixed(2)} />
+          </div>
+        </Card>
+
+        <Card>
+          <CardHeader title="Personalidade" subtitle="Big Five — 0 a 1." />
+          <div className="space-y-2.5">
+            {Object.entries(PERSONALITY_LABELS).map(([key, meta]) => {
+              const v = traits[key as keyof typeof traits] ?? 0.5
+              return (
+                <div key={key}>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="font-medium text-foreground/80">{meta.label}</span>
+                    <span className="font-mono text-muted-foreground">{v.toFixed(2)}</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full bg-foreground/25 rounded-full transition-all"
+                      style={{ width: `${v * 100}%` }}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground/60 uppercase tracking-wide mb-1">Performance</p>
-                  <p className="text-2xl font-bold">{agent.performance}%</p>
+              )
+            })}
+          </div>
+        </Card>
+      </div>
+
+      <div className="space-y-5">
+        <Card>
+          <CardHeader title="Estatísticas" />
+          <div className="grid grid-cols-2 gap-3">
+            <StatBox icon={<Sparkles className="w-3.5 h-3.5" />} label="Micro-agentes" value={agent.micro_agents_count} />
+            <StatBox icon={<Database className="w-3.5 h-3.5" />} label="Memórias" value={agent.memories_count} />
+            <StatBox icon={<FileText className="w-3.5 h-3.5" />} label="Documentos" value={agent.documents_count} />
+            <StatBox icon={<Activity className="w-3.5 h-3.5" />} label="Estado" value={agent.is_active ? "Ativo" : "Inativo"} />
+          </div>
+        </Card>
+
+        <Card>
+          <CardHeader title="Metadados" />
+          <dl className="space-y-2.5 text-sm">
+            <MetaRow label="ID" value={<code className="text-[11px] font-mono text-muted-foreground">{agent.id.slice(0, 12)}…</code>} copy={agent.id} />
+            <MetaRow label="Criado" value={formatRelativeDate(agent.created_at)} />
+            <MetaRow label="Atualizado" value={formatRelativeDate(agent.updated_at)} />
+            <MetaRow label="Última interação" value={formatRelativeDate(agent.last_interaction)} />
+            {agent.owner_id && (
+              <MetaRow label="Dono" value={<span className="font-mono text-[11px] text-muted-foreground">{agent.owner_id.slice(0, 8)}…</span>} />
+            )}
+          </dl>
+        </Card>
+      </div>
+    </div>
+  )
+}
+
+function MicroAgentsTab({ items }: { items: MicroAgentInfo[] }) {
+  if (items.length === 0) {
+    return <Empty icon={<Sparkles className="w-8 h-8" />} title="Sem micro-agentes" hint="Não existem micro-agentes configurados." />
+  }
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {items.map((m) => {
+        const name = m.type_name || m.type?.name || "Micro-agente"
+        return (
+          <Card key={m.id}>
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-md bg-muted flex items-center justify-center shrink-0">
+                <Zap className="w-4 h-4 text-muted-foreground" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <h4 className="text-sm font-medium capitalize">{name}</h4>
+                  {m.activation_enabled === false && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                      Off
+                    </span>
+                  )}
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground/60 uppercase tracking-wide mb-1">Taxa Sucesso</p>
-                  <p className="text-2xl font-bold">{agent.successRate}%</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground/60 uppercase tracking-wide mb-1">Tempo Resp.</p>
-                  <p className="text-2xl font-bold">{agent.averageResponseTime}</p>
-                </div>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Peso: <span className="font-mono">{(m.custom_weight ?? 1).toFixed(2)}</span>
+                  {" · "}
+                  Confiança: <span className="font-mono">{((m.confidence_level ?? 0.5) * 100).toFixed(0)}%</span>
+                </p>
+                {m.current_focus && (
+                  <p className="text-xs mt-1.5 text-muted-foreground italic">"{m.current_focus}"</p>
+                )}
               </div>
             </div>
+          </Card>
+        )
+      })}
+    </div>
+  )
+}
 
-            {/* System Prompt */}
-            <div className="glass-subtle rounded-2xl p-6 border border-white/5">
-              <h3 className="text-lg font-semibold mb-4">System Prompt</h3>
-              <div className="bg-background/50 rounded-lg p-4 border border-white/5 text-sm text-muted-foreground/80 font-mono">
-                {agent.systemPrompt}
+function MemoriesTab({ items }: { items: MemoryInfo[] }) {
+  if (items.length === 0) {
+    return <Empty icon={<Database className="w-8 h-8" />} title="Sem memórias" hint="Memórias serão criadas à medida que o agente interage." />
+  }
+  return (
+    <div className="space-y-2">
+      {items.map((m) => (
+        <Card key={m.id}>
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <h4 className="text-sm font-medium truncate">{m.title}</h4>
+              <div className="flex flex-wrap items-center gap-2 mt-1 text-[11px] text-muted-foreground">
+                {m.type && (
+                  <span className="px-1.5 py-0.5 rounded bg-muted">{m.type}</span>
+                )}
+                {typeof m.importance_score === "number" && (
+                  <span>Importância: <span className="font-mono">{m.importance_score.toFixed(2)}</span></span>
+                )}
+                {typeof m.emotional_valence === "number" && (
+                  <span>Valência: <span className="font-mono">{m.emotional_valence.toFixed(2)}</span></span>
+                )}
               </div>
-              <div className="flex gap-2 mt-4">
-                <Button size="sm" variant="outline" className="gap-2">
-                  <Copy className="w-4 h-4" />
-                  Copiar
-                </Button>
-                <Button size="sm" variant="outline" className="gap-2">
-                  <Edit2 className="w-4 h-4" />
-                  Editar
-                </Button>
-              </div>
-            </div>
-
-            {/* Recent Conversations */}
-            <div className="glass-subtle rounded-2xl p-6 border border-white/5">
-              <h3 className="text-lg font-semibold mb-4">Conversas Recentes</h3>
-              <div className="space-y-3">
-                {recentConversations.map((conv) => (
-                  <div key={conv.id} className="flex items-center justify-between p-3 bg-white/2 rounded-lg border border-white/5 hover:border-white/10 transition-all cursor-pointer">
-                    <div>
-                      <p className="font-medium text-sm">{conv.topic}</p>
-                      <p className="text-xs text-muted-foreground">{conv.date}</p>
-                    </div>
-                    <div className="text-xs text-muted-foreground">{conv.duration}</div>
-                  </div>
-                ))}
-              </div>
-              <Button variant="outline" className="w-full mt-4">
-                Ver Todas
-              </Button>
             </div>
           </div>
+        </Card>
+      ))}
+    </div>
+  )
+}
 
-          {/* Right column - Sidebar */}
-          <div className="space-y-6">
-            {/* Information */}
-            <div className="glass-subtle rounded-2xl p-6 border border-white/5">
-              <h3 className="text-lg font-semibold mb-4">Informações</h3>
-              <div className="space-y-4 text-sm">
-                <div>
-                  <p className="text-muted-foreground/60 mb-1">Criado em</p>
-                  <p className="font-medium">{agent.created}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground/60 mb-1">Última atualização</p>
-                  <p className="font-medium">{agent.lastUpdated}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground/60 mb-1">Versão</p>
-                  <p className="font-medium">{agent.version}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground/60 mb-1">Bases de conhecimento</p>
-                  <p className="font-medium">{agent.knowledgeBases}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground/60 mb-1">Dados de treinamento</p>
-                  <p className="font-medium">{agent.trainingDataSize}</p>
-                </div>
-              </div>
+function DocumentsTab({ items }: { items: DocInfo[] }) {
+  if (items.length === 0) {
+    return <Empty icon={<FileText className="w-8 h-8" />} title="Sem documentos" hint="Ainda não carregaste documentos para este agente." />
+  }
+  return (
+    <div className="space-y-2">
+      {items.map((d) => (
+        <Card key={d.id}>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-md bg-muted flex items-center justify-center shrink-0">
+              <FileText className="w-4 h-4 text-muted-foreground" />
             </div>
+            <div className="min-w-0">
+              <h4 className="text-sm font-medium truncate">{d.filename || "documento"}</h4>
+              {d.description && <p className="text-[11px] text-muted-foreground truncate">{d.description}</p>}
+            </div>
+          </div>
+        </Card>
+      ))}
+    </div>
+  )
+}
 
-            {/* Quick Actions */}
-            <div className="glass-subtle rounded-2xl p-6 border border-white/5">
-              <h3 className="text-lg font-semibold mb-4">Ações</h3>
-              <div className="space-y-2">
-                <Button variant="outline" className="w-full justify-start gap-2">
-                  <BarChart3 className="w-4 h-4" />
-                  Análises
-                </Button>
-                <Button variant="outline" className="w-full justify-start gap-2">
-                  <Settings className="w-4 h-4" />
-                  Configurações
-                </Button>
-                <Button variant="outline" className="w-full justify-start gap-2">
-                  <Download className="w-4 h-4" />
-                  Exportar
-                </Button>
-              </div>
-            </div>
+/* Modals */
 
-            {/* Danger Zone */}
-            <div className="glass-subtle rounded-2xl p-6 border border-red-500/20">
-              <h3 className="text-lg font-semibold mb-4 text-red-300">Zona de Risco</h3>
-              <Button variant="outline" className="w-full justify-start gap-2 hover:text-red-400 hover:border-red-500/50">
-                <Trash2 className="w-4 h-4" />
-                Deletar Agente
-              </Button>
+function EditModal({
+  agent,
+  onClose,
+  onSaved,
+}: {
+  agent: Agent
+  onClose: () => void
+  onSaved: (a: Agent) => void
+}) {
+  const [name, setName] = useState(agent.name)
+  const [description, setDescription] = useState(agent.description || "")
+  const [avatar, setAvatar] = useState(agent.avatar || "🤖")
+  const [backgroundStory, setBackgroundStory] = useState(agent.background_story || "")
+  const [thinkingStyle, setThinkingStyle] = useState(agent.thinking_style)
+  const [decision, setDecision] = useState(agent.decision_making_approach)
+  const [debate, setDebate] = useState(agent.debate_intensity)
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+
+  const save = async () => {
+    setSaving(true)
+    setErr(null)
+    try {
+      const updated = await updateAgent(agent.id, {
+        name: name.trim(),
+        description: description.trim() || undefined,
+        avatar,
+        background_story: backgroundStory.trim() || undefined,
+        thinking_style: thinkingStyle,
+        decision_making_approach: decision,
+        debate_intensity: debate,
+      } as any)
+      onSaved(updated)
+    } catch (e: any) {
+      setErr(e?.message || "Falha ao guardar")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-lg rounded-lg border border-border bg-card shadow-xl max-h-[90vh] overflow-y-auto">
+        <div className="p-5 border-b border-border/40 flex items-center justify-between">
+          <h2 className="text-sm font-semibold">Editar agente</h2>
+          <button onClick={onClose} className="p-1 rounded-md hover:bg-muted">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="p-5 space-y-4">
+          {err && (
+            <div className="rounded-md border border-red-500/20 bg-red-500/5 p-2.5 text-xs text-red-400">
+              {err}
             </div>
+          )}
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Avatar</label>
+            <Input value={avatar} onChange={(e) => setAvatar(e.target.value.slice(0, 4))} maxLength={4} className="w-20 text-center text-lg h-9" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Nome</label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} className="h-9 text-sm" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Descrição</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full px-3 py-2 rounded-md border border-border bg-background text-sm resize-none focus:outline-none focus:ring-1 focus:ring-ring"
+              rows={3}
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">História de fundo</label>
+            <textarea
+              value={backgroundStory}
+              onChange={(e) => setBackgroundStory(e.target.value)}
+              className="w-full px-3 py-2 rounded-md border border-border bg-background text-sm resize-none focus:outline-none focus:ring-1 focus:ring-ring"
+              rows={4}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Estilo</label>
+              <select
+                value={thinkingStyle}
+                onChange={(e) => setThinkingStyle(e.target.value)}
+                className="w-full h-9 rounded-md border border-border bg-background px-2.5 text-sm"
+              >
+                {THINKING_STYLES.map((s) => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Decisão</label>
+              <select
+                value={decision}
+                onChange={(e) => setDecision(e.target.value)}
+                className="w-full h-9 rounded-md border border-border bg-background px-2.5 text-sm"
+              >
+                {DECISION_APPROACHES.map((s) => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div>
+            <div className="flex items-center justify-between text-xs mb-1.5">
+              <label className="font-medium text-muted-foreground">Intensidade de debate</label>
+              <span className="font-mono text-muted-foreground">{debate.toFixed(2)}</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={debate}
+              onChange={(e) => setDebate(Number(e.target.value))}
+              className="w-full accent-primary"
+            />
           </div>
         </div>
+        <div className="p-5 border-t border-border/40 flex justify-end gap-2">
+          <Button variant="outline" size="sm" onClick={onClose} disabled={saving}>Cancelar</Button>
+          <Button size="sm" onClick={save} disabled={saving || !name.trim()} className="gap-1.5">
+            {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+            Guardar
+          </Button>
+        </div>
       </div>
+    </div>
+  )
+}
+
+function ConfirmDeleteModal({
+  agent,
+  loading,
+  onCancel,
+  onConfirm,
+}: {
+  agent: Agent
+  loading: boolean
+  onCancel: () => void
+  onConfirm: () => void
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-sm rounded-lg border border-border bg-card p-6 shadow-xl">
+        <div className="flex items-start gap-3 mb-4">
+          <div className="w-9 h-9 rounded-full bg-red-500/10 flex items-center justify-center shrink-0">
+            <AlertCircle className="w-4 h-4 text-red-400" />
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold">Apagar agente</h2>
+            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+              Esta ação é irreversível. Vais perder memórias, documentos e conversas de <span className="font-medium text-foreground">{agent.name}</span>.
+            </p>
+          </div>
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" size="sm" onClick={onCancel} disabled={loading}>Cancelar</Button>
+          <Button size="sm" onClick={onConfirm} disabled={loading} className="bg-red-600 hover:bg-red-700 text-white">
+            {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Apagar"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* Primitives */
+
+function Card({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-lg border border-border/60 bg-card p-5">
+      {children}
+    </div>
+  )
+}
+
+function CardHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+  return (
+    <div className="mb-4">
+      <h3 className="text-sm font-medium">{title}</h3>
+      {subtitle && <p className="text-[11px] text-muted-foreground mt-0.5">{subtitle}</p>}
+    </div>
+  )
+}
+
+function TabBtn({ children, active, onClick, icon }: { children: React.ReactNode; active: boolean; onClick: () => void; icon: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-px ${
+        active
+          ? "border-foreground text-foreground"
+          : "border-transparent text-muted-foreground hover:text-foreground"
+      }`}
+    >
+      {icon}
+      {children}
+    </button>
+  )
+}
+
+function Badge({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="ml-1 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded bg-muted text-[10px] font-medium text-muted-foreground">
+      {children}
+    </span>
+  )
+}
+
+function Fact({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="rounded-md bg-muted/30 border border-border/40 p-3">
+      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">{label}</p>
+      <p className="text-sm font-medium capitalize">{value}</p>
+    </div>
+  )
+}
+
+function StatBox({ icon, label, value }: { icon: React.ReactNode; label: string; value: React.ReactNode }) {
+  return (
+    <div className="rounded-md bg-muted/30 border border-border/40 p-3">
+      <div className="text-muted-foreground mb-1">{icon}</div>
+      <p className="text-lg font-semibold">{value}</p>
+      <p className="text-[11px] text-muted-foreground">{label}</p>
+    </div>
+  )
+}
+
+function MetaRow({ label, value, copy }: { label: string; value: React.ReactNode; copy?: string }) {
+  const [copied, setCopied] = useState(false)
+  return (
+    <div className="flex items-center justify-between gap-3 text-xs">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="flex items-center gap-1.5 min-w-0">
+        <span className="truncate">{value}</span>
+        {copy && (
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(copy)
+              setCopied(true)
+              setTimeout(() => setCopied(false), 1500)
+            }}
+            className="p-0.5 rounded hover:bg-muted shrink-0"
+            title="Copiar"
+          >
+            {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-muted-foreground" />}
+          </button>
+        )}
+      </dd>
+    </div>
+  )
+}
+
+function Empty({ icon, title, hint }: { icon: React.ReactNode; title: string; hint: string }) {
+  return (
+    <div className="rounded-lg border border-dashed border-border/60 py-12 flex flex-col items-center justify-center text-center">
+      <div className="text-muted-foreground/40 mb-3">{icon}</div>
+      <h3 className="text-sm font-medium mb-1">{title}</h3>
+      <p className="text-xs text-muted-foreground max-w-xs">{hint}</p>
     </div>
   )
 }

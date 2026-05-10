@@ -26,9 +26,9 @@ function LoadingPlaceholder() {
 
 export function LeftPanel() {
   return (
-    <section className="w-full lg:w-[35%] h-full flex flex-col relative min-h-0 border-r border-border bg-gradient-to-br from-card/20 via-background/30 to-background/20 backdrop-blur-sm">
+    <section className="w-full lg:w-[35%] h-full flex flex-col relative min-h-0 border-r border-border">
       {/* Header */}
-      <div className="absolute top-4 left-4 z-10 flex items-center gap-2 bg-card/80 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-border/50 transition-all hover:border-border hover:bg-card/90">
+      <div className="absolute top-4 left-4 z-10 flex items-center gap-2 bg-card/60 px-3 py-1.5 rounded-lg border border-border/50 transition-all hover:border-border hover:bg-card/80">
         <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
         <div className="flex items-center gap-1.5">
           <Brain className="w-3.5 h-3.5 text-primary" />
@@ -37,7 +37,7 @@ export function LeftPanel() {
       </div>
 
       {/* Instructions */}
-      <div className="absolute top-4 right-4 z-10 bg-card/60 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-border/50 hidden lg:block">
+      <div className="absolute top-4 right-4 z-10 bg-card/60 px-3 py-1.5 rounded-lg border border-border/50 hidden lg:block">
         <span className="text-[10px] text-muted-foreground font-medium">Arrasta • Scroll</span>
       </div>
 
@@ -49,7 +49,7 @@ export function LeftPanel() {
       </div>
 
       {/* Legend - Bottom */}
-      <div className="h-auto max-h-[28%] bg-card/40 backdrop-blur-sm border-t border-border overflow-hidden">
+      <div className="h-auto max-h-[28%] bg-card/30 border-t border-border overflow-hidden">
         <AgentLegend />
       </div>
     </section>

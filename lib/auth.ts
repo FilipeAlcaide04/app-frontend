@@ -6,6 +6,7 @@ export interface User {
   email: string
   role: "admin" | "user"
   is_active: boolean
+  oauth_provider: "google" | "github" | null
   avatar: string | null
   created_at: string
   updated_at: string
@@ -92,11 +93,24 @@ export async function getMe(): Promise<User> {
   return data
 }
 
+export async function updateProfile(updates: { name?: string; email?: string }): Promise<User> {
+  const data = await authFetch("/auth/me", {
+    method: "PUT",
+    body: JSON.stringify(updates),
+  })
+  setStoredUser(data)
+  return data
+}
+
 export async function changePassword(currentPassword: string, newPassword: string) {
   return authFetch("/auth/me/change-password", {
     method: "POST",
     body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
   })
+}
+
+export async function getDashboardStats() {
+  return authFetch("/dashboard/stats")
 }
 
 export function logout() {
