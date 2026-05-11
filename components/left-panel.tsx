@@ -2,7 +2,6 @@
 
 import dynamic from "next/dynamic"
 import { Suspense } from "react"
-import { AgentLegend } from "@/components/agent-legend"
 import { Brain } from "lucide-react"
 
 const Brain3D = dynamic(
@@ -48,10 +47,6 @@ export function LeftPanel() {
         </Suspense>
       </div>
 
-      {/* Legend - Bottom */}
-      <div className="h-auto max-h-[28%] bg-card/30 border-t border-border overflow-hidden">
-        <AgentLegend />
-      </div>
     </section>
   )
 }

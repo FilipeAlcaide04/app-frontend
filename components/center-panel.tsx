@@ -7,7 +7,6 @@ import { ChatInterface } from "@/components/chat-interface";
 import { MessageCircle, Plus } from "lucide-react";
 import { VRMClientOnly } from "@/components/vrm-client-only";
 import { useVRMLipSync } from "@/components/vrm-avatar";
-import { Avatar3D } from "@/components/avatar-3d";
 import { Agent } from "@/lib/agents";
 
 const DEFAULT_AVATAR_URL = "/avatars/placeholder.vrm";
@@ -116,7 +115,11 @@ export function CenterPanel({ agent, agents, loading }: CenterPanelProps) {
               }}
             />
           ) : (
-            <Avatar3D />
+            <div className="w-full h-full flex items-center justify-center">
+              <div className="w-24 h-24 rounded-full bg-card/60 border border-border/50 flex items-center justify-center text-4xl">
+                {agent?.avatar || "🤖"}
+              </div>
+            </div>
           )}
         </div>
       </div>

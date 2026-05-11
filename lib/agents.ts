@@ -23,26 +23,6 @@ export interface Agent {
   updated_at: string | null
 }
 
-export interface CreateAgentPayload {
-  name: string
-  description?: string
-  avatar?: string
-  background_story?: string
-  personality_traits?: Record<string, number>
-  base_values?: Record<string, any>
-  thinking_style?: string
-  decision_making_approach?: string
-  debate_intensity?: number
-  micro_agent_types?: string[]
-  initial_memories?: {
-    title: string
-    content: string
-    type?: string
-    importance_score?: number
-    emotional_valence?: number
-  }[]
-}
-
 export interface ChatResponse {
   conversation_id: string
   agent_id: string
@@ -86,13 +66,6 @@ export async function getAgent(id: string): Promise<Agent> {
   return apiFetch(`/agents/${id}`)
 }
 
-export async function createAgent(payload: CreateAgentPayload): Promise<Agent> {
-  return apiFetch("/agents", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  })
-}
-
 export interface CreatePersonaPayload {
   name: string
   description?: string
@@ -131,7 +104,7 @@ export async function updatePersonaBlueprint(agentId: string, section: string, d
   })
 }
 
-export async function updateAgent(id: string, updates: Partial<CreateAgentPayload> & { is_active?: boolean }): Promise<Agent> {
+export async function updateAgent(id: string, updates: Partial<CreatePersonaPayload> & { is_active?: boolean }): Promise<Agent> {
   return apiFetch(`/agents/${id}`, {
     method: "PUT",
     body: JSON.stringify(updates),
