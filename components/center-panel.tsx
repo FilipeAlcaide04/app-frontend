@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ChatInterface } from "@/components/chat-interface";
+import { PersonaEmotions } from "@/components/persona-emotions";
 import { MessageCircle, Plus } from "lucide-react";
 import { VRMClientOnly } from "@/components/vrm-client-only";
 import { useVRMLipSync } from "@/components/vrm-avatar";
@@ -81,7 +82,7 @@ export function CenterPanel({ agent, agents, loading }: CenterPanelProps) {
     <section className="flex-1 h-full flex relative min-h-0">
       {/* Avatar Section - Takes most of the space */}
       <div className="flex-1 h-full flex flex-col relative min-h-0">
-        <div className="absolute top-4 left-4 right-4 z-10 flex items-center gap-2">
+        <div className="absolute top-4 left-4 right-4 z-10 flex items-start justify-between">
           <div className="flex items-center gap-2 bg-card/60 px-3 py-1.5 rounded-lg border border-border/50">
             <div className="w-2 h-2 bg-accent rounded-full animate-pulse" />
             <MessageCircle className="w-3.5 h-3.5 text-accent" />
@@ -90,11 +91,12 @@ export function CenterPanel({ agent, agents, loading }: CenterPanelProps) {
             </span>
           </div>
 
-         
+          {/* Persona Emotions - Vertical on the right */}
+          <PersonaEmotions agentId={agent?.id} className="pr-2" />
         </div>
 
         {/* Avatar */}
-        <div className="flex-1 min-h-0 mt-14">
+        <div className="flex-1 min-h-0 mt-32">
           {!avatarLoadFailed ? (
             <VRMClientOnly
               avatarUrl={avatarUrl}

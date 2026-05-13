@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -15,6 +15,8 @@ import {
   X,
   ChevronDown,
   Plus,
+  FileJson,
+  Pencil,
 } from "lucide-react"
 import {
   createPersona,
@@ -159,11 +161,15 @@ const emptyMemory = (): MemoryEntry => ({
 
 // ─── Main Component ─────────────────────────────────────────────────────────
 
+type CreateMode = "choose" | "manual"
+
 export default function CreateAgentPage() {
   const router = useRouter()
+  const [mode, setMode] = useState<CreateMode>("choose")
   const [step, setStep] = useState(1)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Step 1: Identity
   const [name, setName] = useState("")
@@ -225,6 +231,217 @@ export default function CreateAgentPage() {
   // Step 7: Worldview & Growth
   const [worldview, setWorldview] = useState({ philosophicalOrientation: "", believesAbout: { humanNature: "", love: "", trust: "" } })
   const [growthArc, setGrowthArc] = useState({ currentEriksonStage: "", therapyStatus: "", regrets: [] as string[] })
+
+  const populateFromJson = useCallback((parsed: Record<string, any>) => {
+    if (parsed.name) setName(parsed.name)
+    if (parsed.description) setDescription(parsed.description)
+    if (parsed.avatar) setAvatar(parsed.avatar)
+    if (parsed.background_story) setBackgroundStory(parsed.background_story)
+    if (parsed.thinking_style) setThinkingStyle(parsed.thinking_style)
+    if (parsed.decision_making_approach) setDecisionApproach(parsed.decision_making_approach)
+    if (parsed.debate_intensity != null) setDebateIntensity(parsed.debate_intensity)
+    if (Array.isArray(parsed.micro_agent_types)) setMicroAgents(parsed.micro_agent_types)
+
+    if (parsed.personality_traits) {
+      setPersonality({ ...DEFAULT_PERSONALITY, ...parsed.personality_traits })
+    }
+
+    const p = parsed.persona
+    if (!p) return
+
+    const id = p.identity
+    if (id) {
+      if (id.self_concept) {
+        setSelfConcept({
+          howTheySeeThemselves: id.self_concept.how_they_see_themselves || "",
+          howTheyWantToBeSeen: id.self_concept.how_they_want_to_be_seen || "",
+          howTheyFearBeingSeen: id.self_concept.how_they_fear_being_seen || "",
+        })
+      }
+      if (id.inner_voice) {
+        setInnerVoice({ tone: id.inner_voice.tone || "", recurringPhrases: id.inner_voice.recurring_phrases || [] })
+      }
+      if (Array.isArray(id.languages)) setLanguages(id.languages)
+      if (id.impostor_syndrome != null) setImpostorSyndrome(id.impostor_syndrome)
+    }
+
+    const pf = p.personality_full
+    if (pf) {
+      if (pf.attachment_style) setAttachmentStyle(pf.attachment_style)
+      if (pf.big_five?.natural) {
+        const traits: Record<string, number> = {}
+        const facetData: Record<string, Record<string, number>> = {}
+        for (const [trait, val] of Object.entries(pf.big_five.natural)) {
+          const v = val as any
+          traits[trait] = typeof v === "number" ? v : v?.score ?? DEFAULT_PERSONALITY[trait] ?? 0.5
+          if (v?.facets) facetData[trait] = v.facets
+        }
+        setPersonality({ ...DEFAULT_PERSONALITY, ...traits })
+        if (Object.keys(facetData).length > 0) setFacets(facetData)
+      }
+      if (Array.isArray(pf.contradictions)) setContradictions(pf.contradictions)
+      if (pf.masks) setMasks({ public: pf.masks.public || "", private: pf.masks.private || "" })
+      if (pf.shadow) setShadow(pf.shadow)
+      if (pf.humor_style) setHumorStyle(pf.humor_style)
+      if (pf.defense_mechanisms) {
+        setDefenseMechanisms({
+          habitual: pf.defense_mechanisms.habitual || [],
+          moderateStress: pf.defense_mechanisms.moderate_stress || [],
+          extremeStress: pf.defense_mechanisms.extreme_stress || [],
+        })
+      }
+      if (Array.isArray(pf.values)) setValues(pf.values)
+      if (Array.isArray(pf.fears)) setFears(pf.fears)
+      if (Array.isArray(pf.motivations)) setMotivations(pf.motivations)
+    }
+
+    const ec = p.emotional_config
+    if (ec) {
+      if (ec.baseline_emotions?.pad) {
+        setPadBaseline({
+          pleasure: ec.baseline_emotions.pad.pleasure ?? 0.5,
+          arousal: ec.baseline_emotions.pad.arousal ?? 0.5,
+          dominance: ec.baseline_emotions.pad.dominance ?? 0.5,
+        })
+      }
+      if (Array.isArray(ec.emotional_triggers)) setEmotionalTriggers(ec.emotional_triggers)
+      if (ec.emotional_regulation?.window_of_tolerance?.default_width != null) {
+        setWindowOfTolerance(ec.emotional_regulation.window_of_tolerance.default_width)
+      }
+    }
+
+    const isc = p.internal_states_config
+    if (isc) {
+      if (isc.energy) {
+        setEnergy({
+          baselineLevel: isc.energy.baseline_level ?? 0.6,
+          recoveryRate: isc.energy.recovery_rate ?? 0.05,
+          drainRate: isc.energy.drain_rate ?? 0.08,
+        })
+      }
+      if (isc.emotional_needs) {
+        const en = isc.emotional_needs
+        setEmotionalNeeds({
+          connection: { baseline: en.connection?.baseline ?? 0.5, importance: en.connection?.importance ?? 0.7 },
+          validation: { baseline: en.validation?.baseline ?? 0.5, importance: en.validation?.importance ?? 0.7 },
+          autonomy: { baseline: en.autonomy?.baseline ?? 0.5, importance: en.autonomy?.importance ?? 0.7 },
+          safety: { baseline: en.safety?.baseline ?? 0.5, importance: en.safety?.importance ?? 0.7 },
+        })
+      }
+      if (isc.stress) {
+        setStress({
+          baseline: isc.stress.baseline ?? 0.3,
+          resilience: isc.stress.resilience ?? 0.6,
+          breakingPoint: isc.stress.breaking_point ?? 0.9,
+        })
+      }
+    }
+
+    const cc = p.cognitive_config
+    if (cc) {
+      if (Array.isArray(cc.biases)) setBiases(cc.biases)
+      if (Array.isArray(cc.limiting_beliefs)) setLimitingBeliefs(cc.limiting_beliefs)
+      if (cc.inner_narrative) setInnerNarrative(cc.inner_narrative)
+    }
+
+    const sc = p.social_config
+    if (sc) {
+      if (sc.communication_style) {
+        setCommunicationStyle({
+          default: sc.communication_style.default || "",
+          whenComfortable: sc.communication_style.when_comfortable || "",
+          whenThreatened: sc.communication_style.when_threatened || "",
+        })
+      }
+      if (sc.apology_style) setApologyStyle(sc.apology_style)
+    }
+
+    const bc = p.behavioral_config
+    if (bc) {
+      if (bc.stress_responses) {
+        setStressResponses({
+          low: bc.stress_responses.low || "",
+          medium: bc.stress_responses.medium || "",
+          high: bc.stress_responses.high || "",
+        })
+      }
+      if (Array.isArray(bc.self_sabotage_patterns)) setSelfSabotagePatterns(bc.self_sabotage_patterns)
+    }
+
+    const bp = p.behavior_prompts
+    if (bp) {
+      if (bp.voice) {
+        setVoice({
+          sentenceStructure: bp.voice.sentence_structure || "",
+          commonExpressions: bp.voice.common_expressions || [],
+          idiolect: bp.voice.idiolect || [],
+        })
+      }
+      if (Array.isArray(bp.rules)) setRules(bp.rules)
+      if (bp.consistency_anchors) {
+        setConsistencyAnchors({
+          neverChanges: bp.consistency_anchors.never_changes || [],
+          signatureBehaviors: bp.consistency_anchors.signature_behaviors || [],
+          hardBoundaries: bp.consistency_anchors.hard_boundaries || [],
+        })
+      }
+    }
+
+    if (p.worldview) {
+      setWorldview({
+        philosophicalOrientation: p.worldview.philosophical_orientation || "",
+        believesAbout: {
+          humanNature: p.worldview.believes_about?.human_nature || "",
+          love: p.worldview.believes_about?.love || "",
+          trust: p.worldview.believes_about?.trust || "",
+        },
+      })
+    }
+
+    if (p.growth_arc) {
+      setGrowthArc({
+        currentEriksonStage: p.growth_arc.current_erikson_stage || "",
+        therapyStatus: p.growth_arc.therapy_status || "",
+        regrets: p.growth_arc.regrets || [],
+      })
+    }
+
+    const mems = p.memory_config?.initial_memories
+    if (Array.isArray(mems) && mems.length > 0) {
+      setMemories(mems.map((m: any) => ({
+        content: m.content || "",
+        memoryType: m.memory_type || "episodic",
+        importance: m.importance ?? 0.7,
+        emotionalCharge: m.emotional_charge ?? 0.5,
+        hasTrauma: !!m.trauma,
+        trauma: m.trauma ? {
+          type: m.trauma.type || "abandonment",
+          severity: m.trauma.severity ?? 0.5,
+          processingStatus: m.trauma.processing_status || "unprocessed",
+          triggers: m.trauma.triggers || [],
+          beliefsFormed: m.trauma.beliefs_formed || [],
+        } : { type: "abandonment", severity: 0.5, processingStatus: "unprocessed", triggers: [], beliefsFormed: [] },
+      })))
+    }
+  }, [])
+
+  const handleJsonFile = useCallback((file: File) => {
+    setError(null)
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const text = e.target?.result as string
+      try {
+        const parsed = JSON.parse(text)
+        populateFromJson(parsed)
+        setMode("manual")
+        setStep(1)
+      } catch {
+        setError("Ficheiro JSON invalido. Verifica a sintaxe.")
+      }
+    }
+    reader.onerror = () => setError("Erro ao ler o ficheiro.")
+    reader.readAsText(file)
+  }, [populateFromJson])
 
   const canAdvance = () => {
     if (step === 1) return avatar.trim().length > 0 && name.trim().length >= 2
@@ -437,6 +654,73 @@ export default function CreateAgentPage() {
 
   const stepLabels = ["Identidade", "Personalidade", "Mente & Valores", "Emoções", "Comportamento", "Agentes & Memórias", "Visão & Resumo"]
 
+  if (mode === "choose") {
+    return (
+      <div className="min-h-screen">
+        <div className="sticky top-0 z-30 border-b border-border/40 bg-background/80 backdrop-blur-xl">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex items-center gap-3">
+              <Link href="/agents">
+                <Button variant="ghost" size="icon">
+                  <ArrowLeft className="w-5 h-5" />
+                </Button>
+              </Link>
+              <div>
+                <h1 className="text-xl sm:text-2xl font-bold">Criar humano virtual</h1>
+                <p className="text-sm text-muted-foreground">Escolhe como queres criar</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          {error && (
+            <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200 flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <button
+              onClick={() => setMode("manual")}
+              className="group text-left rounded-2xl border-2 border-border/50 bg-card/40 p-8 hover:border-primary/50 hover:bg-card/60 transition-all"
+            >
+              <div className="w-14 h-14 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-5">
+                <Pencil className="w-7 h-7 text-primary" />
+              </div>
+              <h3 className="text-lg font-bold mb-2">Criar manualmente</h3>
+              <p className="text-sm text-muted-foreground">
+                Preenche o formulario passo a passo — identidade, personalidade, emocoes, comportamento e mais.
+              </p>
+            </button>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="group text-left rounded-2xl border-2 border-border/50 bg-card/40 p-8 hover:border-primary/50 hover:bg-card/60 transition-all"
+            >
+              <div className="w-14 h-14 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center mb-5">
+                <FileJson className="w-7 h-7 text-accent" />
+              </div>
+              <h3 className="text-lg font-bold mb-2">Importar JSON</h3>
+              <p className="text-sm text-muted-foreground">
+                Faz upload de um ficheiro JSON com a persona. Os campos sao carregados no formulario para editares.
+              </p>
+            </button>
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json,application/json"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (file) handleJsonFile(file)
+              e.target.value = ""
+            }}
+          />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen">
       {/* Header */}
@@ -444,11 +728,9 @@ export default function CreateAgentPage() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
-              <Link href="/agents">
-                <Button variant="ghost" size="icon">
-                  <ArrowLeft className="w-5 h-5" />
-                </Button>
-              </Link>
+              <Button variant="ghost" size="icon" onClick={() => setMode("choose")}>
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
               <div className="min-w-0">
                 <h1 className="text-xl sm:text-2xl font-bold truncate">Criar humano virtual</h1>
                 <p className="text-sm text-muted-foreground">
