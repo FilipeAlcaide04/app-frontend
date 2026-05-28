@@ -265,63 +265,138 @@ export function useVRMBlink(vrm: any, isSpeaking: boolean) {
 }
 
 /* =========================
-   LIPSYNC HOOK
+   LIPSYNC HOOK (with Edge TTS)
 ========================= */
+
+import {
+  speak as ttsSpeak,
+  stopSpeaking,
+  getAnalyser,
+  getSavedVoiceGender,
+} from "@/lib/tts";
+
+interface LipSyncOptions {
+  language?: string
+  emotion?: string
+}
 
 export function useVRMLipSync(vrm: any) {
   const speakingRef = useRef(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const rafRef = useRef(0);
+  const prevAmplitude = useRef(0);
+  const speechIdRef = useRef(0);
 
   useVRMBlink(vrm, isSpeaking);
 
-  const speak = async (text: string) => {
-    if (!vrm?.expressionManager || speakingRef.current) return;
+  const resetMouth = () => {
+    if (!vrm?.expressionManager) return;
+    vrm.expressionManager.setValue("aa", 0);
+    vrm.expressionManager.setValue("ih", 0);
+    vrm.expressionManager.setValue("ou", 0);
+  };
 
-    speakingRef.current = true;
-    setIsSpeaking(true);
+  const startLipSyncLoop = () => {
+    const loop = () => {
+      if (!speakingRef.current) {
+        resetMouth();
+        return;
+      }
 
-    const vowelMap: Record<string, string> = {
-      a: "aa", á: "aa", ã: "aa", â: "aa",
-      e: "ih", é: "ih", ê: "ih",
-      i: "ih", í: "ih",
-      o: "ou", ó: "ou", õ: "ou", ô: "ou",
-      u: "ou", ú: "ou",
-    };
+      const analyser = getAnalyser();
+      if (!analyser || !vrm?.expressionManager) {
+        rafRef.current = requestAnimationFrame(loop);
+        return;
+      }
 
-    const chars = text.split("");
-    let prevVowel = "";
+      const freqData = new Uint8Array(analyser.frequencyBinCount);
+      analyser.getByteFrequencyData(freqData);
 
-    for (let i = 0; i < chars.length; i++) {
-      const char = chars[i].toLowerCase();
-      const vowel = vowelMap[char];
+      const binCount = freqData.length;
+      const low = freqData.slice(0, Math.floor(binCount * 0.15));
+      const mid = freqData.slice(Math.floor(binCount * 0.15), Math.floor(binCount * 0.5));
+      const high = freqData.slice(Math.floor(binCount * 0.5), Math.floor(binCount * 0.8));
+
+      const avg = (arr: Uint8Array) => {
+        let s = 0;
+        for (let i = 0; i < arr.length; i++) s += arr[i];
+        return arr.length ? s / arr.length / 255 : 0;
+      };
+
+      const lowVal = avg(low);
+      const midVal = avg(mid);
+      const highVal = avg(high);
+
+      const overall = Math.min(1, (lowVal + midVal + highVal) * 1.8);
+      const smoothed = prevAmplitude.current * 0.25 + overall * 0.75;
+      prevAmplitude.current = smoothed;
 
       vrm.expressionManager.setValue("aa", 0);
       vrm.expressionManager.setValue("ih", 0);
       vrm.expressionManager.setValue("ou", 0);
 
-      if (vowel) {
-        const intensity = 0.6 + Math.random() * 0.4;
-        vrm.expressionManager.setValue(vowel, intensity);
-        prevVowel = vowel;
-        await new Promise((r) => setTimeout(r, 55 + Math.random() * 30));
-      } else if (char === " " || char === "," || char === ".") {
-        await new Promise((r) => setTimeout(r, char === " " ? 40 : 120));
-      } else {
-        if (prevVowel) {
-          vrm.expressionManager.setValue(prevVowel, 0.2);
-        }
-        await new Promise((r) => setTimeout(r, 35 + Math.random() * 20));
-        prevVowel = "";
+      if (smoothed > 0.02) {
+        const aa = Math.min(1, lowVal * 2.5) * smoothed;
+        const ih = Math.min(1, highVal * 3.0) * smoothed;
+        const ou = Math.min(1, midVal * 2.5) * smoothed;
+
+        vrm.expressionManager.setValue("aa", aa);
+        vrm.expressionManager.setValue("ih", ih * 0.6);
+        vrm.expressionManager.setValue("ou", ou * 0.7);
       }
+
+      rafRef.current = requestAnimationFrame(loop);
+    };
+
+    rafRef.current = requestAnimationFrame(loop);
+  };
+
+  const speak = async (text: string, opts?: LipSyncOptions) => {
+    const speechId = ++speechIdRef.current;
+    if (speakingRef.current) {
+      stopSpeaking();
+      cancelAnimationFrame(rafRef.current);
+      if (vrm?.expressionManager) resetMouth();
+      prevAmplitude.current = 0;
+      speakingRef.current = false;
+      setIsSpeaking(false);
     }
 
-    vrm.expressionManager.setValue("aa", 0);
-    vrm.expressionManager.setValue("ih", 0);
-    vrm.expressionManager.setValue("ou", 0);
+    speakingRef.current = true;
+    setIsSpeaking(true);
 
+    const hasVrm = !!vrm?.expressionManager;
+    const gender = getSavedVoiceGender();
+
+    await ttsSpeak(text, {
+      gender,
+      language: opts?.language,
+      emotion: opts?.emotion,
+      onStart: () => { if (speechId === speechIdRef.current && hasVrm) startLipSyncLoop() },
+      onEnd: () => {
+        if (speechId !== speechIdRef.current) return;
+        cancelAnimationFrame(rafRef.current);
+        if (hasVrm) resetMouth();
+      },
+    });
+
+    if (speechId !== speechIdRef.current) return;
+    cancelAnimationFrame(rafRef.current);
+    if (hasVrm) resetMouth();
+    prevAmplitude.current = 0;
     speakingRef.current = false;
     setIsSpeaking(false);
   };
 
-  return { speak, isSpeaking };
+  const stop = () => {
+    speechIdRef.current += 1;
+    stopSpeaking();
+    cancelAnimationFrame(rafRef.current);
+    resetMouth();
+    prevAmplitude.current = 0;
+    speakingRef.current = false;
+    setIsSpeaking(false);
+  };
+
+  return { speak, stop, isSpeaking };
 }

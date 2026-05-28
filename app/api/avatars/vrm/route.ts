@@ -1,17 +1,41 @@
-/**
- * GET /api/avatars/vrm
- * Retorna o URL do avatar VRM do utilizador
- */
+import { readdir } from "fs/promises"
+import path from "path"
+
+export const runtime = "nodejs"
+
+function labelFromFileName(fileName: string) {
+  return fileName
+    .replace(/\.vrm$/i, "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase())
+}
 
 export async function GET(request: Request) {
   try {
-    // Por agora, retorna o placeholder
-    // No futuro, vai buscar da BD baseado no user/bot
+    const avatarsDir = path.join(process.cwd(), "public", "avatars")
+    const files = await readdir(avatarsDir)
+    const avatars = files
+      .filter((fileName) => fileName.toLowerCase().endsWith(".vrm"))
+      .sort((a, b) => {
+        if (a === "placeholder.vrm") return -1
+        if (b === "placeholder.vrm") return 1
+        return a.localeCompare(b)
+      })
+      .map((fileName) => ({
+        fileName,
+        name: labelFromFileName(fileName),
+        url: `/avatars/${fileName}`,
+        type: "vrm",
+      }))
+
+    const selected = avatars[0]
+
     return Response.json({
       success: true,
-      url: '/avatars/placeholder.vrm',
-      fileName: 'VIPE_Hero.vrm',
-      description: 'Avatar placeholder - Por agora, todos usam este'
+      url: selected?.url ?? "/avatars/placeholder.vrm",
+      fileName: selected?.fileName ?? "placeholder.vrm",
+      description: "Avatars disponíveis em public/avatars",
+      avatars,
     })
   } catch (error) {
     console.error('Error fetching avatar:', error)

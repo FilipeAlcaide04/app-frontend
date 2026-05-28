@@ -25,6 +25,7 @@ import {
   DEFAULT_PERSONALITY,
   PERSONALITY_LABELS,
   MICRO_AGENT_TYPES,
+  AGENT_LANGUAGES,
 } from "@/lib/agents"
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -178,7 +179,7 @@ export default function CreateAgentPage() {
   const [backgroundStory, setBackgroundStory] = useState("")
   const [selfConcept, setSelfConcept] = useState({ howTheySeeThemselves: "", howTheyWantToBeSeen: "", howTheyFearBeingSeen: "" })
   const [innerVoice, setInnerVoice] = useState({ tone: "", recurringPhrases: [] as string[] })
-  const [languages, setLanguages] = useState<string[]>([])
+  const [language, setLanguage] = useState("pt-PT")
   const [impostorSyndrome, setImpostorSyndrome] = useState(0.3)
 
   // Step 2: Personality
@@ -261,7 +262,11 @@ export default function CreateAgentPage() {
       if (id.inner_voice) {
         setInnerVoice({ tone: id.inner_voice.tone || "", recurringPhrases: id.inner_voice.recurring_phrases || [] })
       }
-      if (Array.isArray(id.languages)) setLanguages(id.languages)
+      if (Array.isArray(id.languages) && id.languages.length > 0) {
+        const lang = id.languages[0]
+        if (lang === "en-US" || lang === "English" || lang.startsWith("en")) setLanguage("en-US")
+        else setLanguage("pt-PT")
+      }
       if (id.impostor_syndrome != null) setImpostorSyndrome(id.impostor_syndrome)
     }
 
@@ -484,7 +489,7 @@ export default function CreateAgentPage() {
                 },
               }
             : {}),
-          ...(languages.length > 0 ? { languages } : {}),
+          languages: [language],
           impostor_syndrome: impostorSyndrome,
         },
         internal_states_config: {
@@ -626,6 +631,7 @@ export default function CreateAgentPage() {
         name: name.trim(),
         description: description.trim() || undefined,
         avatar,
+        language,
         background_story: backgroundStory.trim() || undefined,
         persona,
         personality_traits: personality,
@@ -846,8 +852,25 @@ export default function CreateAgentPage() {
             <Panel>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Idiomas</label>
-                  <TagInput tags={languages} onChange={setLanguages} placeholder="Ex: Português" />
+                  <label className="block text-sm font-medium mb-2">Idioma</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {AGENT_LANGUAGES.map((lang) => (
+                      <button
+                        key={lang.value}
+                        type="button"
+                        onClick={() => setLanguage(lang.value)}
+                        className={`text-left rounded-xl p-4 border-2 transition-all flex items-center gap-3 ${
+                          language === lang.value ? "border-primary/60 bg-primary/10" : "border-border/50 bg-card/30 hover:border-primary/30"
+                        }`}
+                      >
+                        <span className="text-2xl">{lang.flag}</span>
+                        <div>
+                          <p className="font-semibold text-sm">{lang.label}</p>
+                          <p className="text-xs text-muted-foreground">{lang.value === "en-US" ? "Com tons emocionais" : "Voz natural"}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <SliderField label="Síndrome do impostor" value={impostorSyndrome} onChange={setImpostorSyndrome} min={0} max={1} step={0.05} leftLabel="Inexistente" rightLabel="Forte" />
               </div>

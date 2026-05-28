@@ -8,6 +8,7 @@ export interface Agent {
   name: string
   description: string | null
   avatar: string
+  language: string
   background_story: string | null
   personality_traits: Record<string, number> | null
   base_values: Record<string, any> | null
@@ -30,8 +31,25 @@ export interface ChatResponse {
   agent_response: string
   emotional_state?: Record<string, any>
   persona_state?: Record<string, any>
+  relationship?: {
+    trust_level?: number
+    familiarity?: number
+    affection?: number
+    interaction_count?: number
+    user_name?: string
+  }
   confidence?: number
   duration_ms?: number
+}
+
+export interface GreetingResponse {
+  should_greet: boolean
+  greeting: string
+  mood: string
+  energy: number
+  persona_state?: Record<string, any>
+  relationship?: ChatResponse["relationship"]
+  confidence?: number | null
 }
 
 async function apiFetch(path: string, options: RequestInit = {}) {
@@ -66,10 +84,15 @@ export async function getAgent(id: string): Promise<Agent> {
   return apiFetch(`/agents/${id}`)
 }
 
+export async function getAgentGreeting(agentId: string): Promise<GreetingResponse> {
+  return apiFetch(`/personas/${agentId}/greeting`)
+}
+
 export interface CreatePersonaPayload {
   name: string
   description?: string
   avatar?: string
+  language?: string
   background_story?: string
   persona?: Record<string, any>
   personality_traits?: Record<string, number>
@@ -137,6 +160,17 @@ export async function getAgentMemories(agentId: string) {
   return apiFetch(`/agents/${agentId}/memories`)
 }
 
+export async function deleteAgentMemories(agentId: string, memoryIds?: string[]): Promise<{ deleted: number }> {
+  return apiFetch(`/agents/${agentId}/memories`, {
+    method: "DELETE",
+    body: JSON.stringify(memoryIds ? { memory_ids: memoryIds } : {}),
+  })
+}
+
+export async function resetAgentConversation(agentId: string): Promise<{ sessions_cleared: number }> {
+  return apiFetch(`/agents/${agentId}/conversations/reset`, { method: "POST" })
+}
+
 export async function getAgentDocuments(agentId: string) {
   return apiFetch(`/agents/${agentId}/documents`)
 }
@@ -160,6 +194,11 @@ export async function uploadAgentDocument(agentId: string, file: File, descripti
 }
 
 // Helpers -------------------------------------------------------------------
+
+export const AGENT_LANGUAGES: { value: string; label: string; flag: string }[] = [
+  { value: "pt-PT", label: "Português", flag: "🇵🇹" },
+  { value: "en-US", label: "English", flag: "🇺🇸" },
+]
 
 export const THINKING_STYLES: { value: string; label: string; description: string }[] = [
   { value: "balanced", label: "Equilibrado", description: "Combina lógica, emoção e criatividade de forma balanceada" },

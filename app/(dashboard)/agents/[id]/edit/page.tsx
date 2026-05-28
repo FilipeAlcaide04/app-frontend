@@ -24,6 +24,7 @@ import {
   DECISION_APPROACHES,
   DEFAULT_PERSONALITY,
   PERSONALITY_LABELS,
+  AGENT_LANGUAGES,
 } from "@/lib/agents"
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -138,7 +139,7 @@ export default function EditAgentPage() {
   // ── Identity ──
   const [selfConcept, setSelfConcept] = useState({ howTheySeeThemselves: "", howTheyWantToBeSeen: "", howTheyFearBeingSeen: "" })
   const [innerVoice, setInnerVoice] = useState({ tone: "", recurringPhrases: [] as string[] })
-  const [languages, setLanguages] = useState<string[]>([])
+  const [language, setLanguage] = useState("pt-PT")
   const [impostorSyndrome, setImpostorSyndrome] = useState(0.3)
 
   // ── Personality ──
@@ -205,6 +206,7 @@ export default function EditAgentPage() {
         setThinkingStyle(a.thinking_style)
         setDecisionApproach(a.decision_making_approach)
         setDebateIntensity(a.debate_intensity)
+        setLanguage(a.language || "pt-PT")
         if (a.personality_traits) {
           setPersonality({ ...DEFAULT_PERSONALITY, ...a.personality_traits })
         }
@@ -235,7 +237,6 @@ export default function EditAgentPage() {
     })
     const iv = identity.inner_voice || {}
     setInnerVoice({ tone: iv.tone || "", recurringPhrases: iv.recurring_phrases || [] })
-    setLanguages(identity.languages || [])
     setImpostorSyndrome(identity.impostor_syndrome ?? 0.3)
 
     const pf = bp.personality_full || {}
@@ -339,6 +340,7 @@ export default function EditAgentPage() {
         name: name.trim(),
         description: description.trim() || undefined,
         avatar,
+        language,
         background_story: backgroundStory.trim() || undefined,
         thinking_style: thinkingStyle,
         decision_making_approach: decisionApproach,
@@ -359,7 +361,7 @@ export default function EditAgentPage() {
             ? { self_concept: { how_they_see_themselves: selfConcept.howTheySeeThemselves, how_they_want_to_be_seen: selfConcept.howTheyWantToBeSeen, how_they_fear_being_seen: selfConcept.howTheyFearBeingSeen } }
             : {}),
           ...(innerVoice.tone ? { inner_voice: { tone: innerVoice.tone, recurring_phrases: innerVoice.recurringPhrases } } : {}),
-          ...(languages.length > 0 ? { languages } : {}),
+          languages: [language],
           impostor_syndrome: impostorSyndrome,
         }],
         ["personality_full", {
@@ -530,11 +532,25 @@ export default function EditAgentPage() {
               </div>
             </Panel>
 
-            <Panel>
+            <Panel title="Idioma">
               <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Idiomas</label>
-                  <TagInput tags={languages} onChange={setLanguages} placeholder="Ex: Português" />
+                <div className="grid grid-cols-2 gap-3">
+                  {AGENT_LANGUAGES.map((lang) => (
+                    <button
+                      key={lang.value}
+                      type="button"
+                      onClick={() => setLanguage(lang.value)}
+                      className={`text-left rounded-xl p-4 border-2 transition-all flex items-center gap-3 ${
+                        language === lang.value ? "border-primary/60 bg-primary/10" : "border-border/50 bg-card/30 hover:border-primary/30"
+                      }`}
+                    >
+                      <span className="text-2xl">{lang.flag}</span>
+                      <div>
+                        <p className="font-semibold text-sm">{lang.label}</p>
+                        <p className="text-xs text-muted-foreground">{lang.value === "en-US" ? "Com tons emocionais" : "Voz natural"}</p>
+                      </div>
+                    </button>
+                  ))}
                 </div>
                 <SliderField label="Síndrome do impostor" value={impostorSyndrome} onChange={setImpostorSyndrome} leftLabel="Inexistente" rightLabel="Forte" />
               </div>

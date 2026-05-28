@@ -145,7 +145,7 @@ function ConsciousnessContent() {
         </header>
 
         {/* Main 2-Column Layout */}
-        <div className="flex h-[100dvh] pt-16 gap-0">
+        <div className="flex h-[100dvh] pt-16 gap-0 min-w-0 overflow-hidden">
           {/* Left Panel - Brain */}
           <LeftPanel />
 

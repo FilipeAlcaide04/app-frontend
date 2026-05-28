@@ -25,7 +25,7 @@ function LoadingPlaceholder() {
 
 export function LeftPanel() {
   return (
-    <section className="w-full lg:w-[35%] h-full flex flex-col relative min-h-0 border-r border-border">
+    <section className="hidden lg:flex lg:w-[35%] shrink-0 h-full flex-col relative min-h-0 border-r border-border">
       {/* Header */}
       <div className="absolute top-4 left-4 z-10 flex items-center gap-2 bg-card/60 px-3 py-1.5 rounded-lg border border-border/50 transition-all hover:border-border hover:bg-card/80">
         <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />

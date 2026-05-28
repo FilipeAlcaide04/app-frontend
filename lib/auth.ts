@@ -135,3 +135,73 @@ export async function adminDeleteUser(userId: string) {
     method: "DELETE",
   })
 }
+
+export interface PromptTemplate {
+  id: string
+  key: string
+  name: string
+  category: string
+  description: string | null
+  template: string
+  language: string
+  version: number
+  variables: string[]
+  is_active: boolean
+  linked_to: string[]
+  created_at: string | null
+  updated_at: string | null
+}
+
+export interface AdminDbResource {
+  key: string
+  label: string
+  summary: string
+  count: number
+  columns: string[]
+  editable_fields: string[]
+  search_fields: string[]
+}
+
+export async function adminGetPrompts(): Promise<{ prompts: PromptTemplate[]; total: number }> {
+  return authFetch("/auth/admin/prompts")
+}
+
+export async function adminUpdatePrompt(promptId: string, updates: Partial<PromptTemplate>) {
+  return authFetch(`/auth/admin/prompts/${promptId}`, {
+    method: "PUT",
+    body: JSON.stringify({ updates }),
+  })
+}
+
+export async function adminGetDbResources(): Promise<{ resources: AdminDbResource[] }> {
+  return authFetch("/auth/admin/db/resources")
+}
+
+export async function adminGetDbRows(
+  resource: string,
+  options: { q?: string; limit?: number; offset?: number } = {},
+): Promise<{
+  resource: string
+  label: string
+  summary: string
+  editable_fields: string[]
+  columns: string[]
+  rows: Record<string, any>[]
+  total: number
+  limit: number
+  offset: number
+}> {
+  const params = new URLSearchParams()
+  if (options.q) params.set("q", options.q)
+  if (options.limit) params.set("limit", String(options.limit))
+  if (options.offset) params.set("offset", String(options.offset))
+  const qs = params.toString()
+  return authFetch(`/auth/admin/db/${resource}${qs ? `?${qs}` : ""}`)
+}
+
+export async function adminUpdateDbRow(resource: string, rowId: string, updates: Record<string, any>) {
+  return authFetch(`/auth/admin/db/${resource}/${rowId}`, {
+    method: "PUT",
+    body: JSON.stringify({ updates }),
+  })
+}
