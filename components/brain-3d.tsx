@@ -1,13 +1,54 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { Component, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { Canvas, useFrame } from "@react-three/fiber"
-import { OrbitControls, Environment, Html, useGLTF } from "@react-three/drei"
+import { OrbitControls, Html, useGLTF } from "@react-three/drei"
 import * as THREE from "three"
+import type { ThoughtContribution } from "@/lib/agents"
+
+class BrainErrorBoundary extends Component<
+  { children: ReactNode; onRetry: () => void },
+  { hasError: boolean }
+> {
+  state = { hasError: false }
+
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+
+  componentDidCatch(error: Error) {
+    console.warn("[Brain3D] Render error, will auto-retry:", error.message)
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="w-full h-full flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-card/60 border border-border/50 flex items-center justify-center text-xl">
+              🧠
+            </div>
+            <p className="text-muted-foreground text-sm mb-2">Erro ao carregar cérebro</p>
+            <button
+              onClick={() => {
+                this.setState({ hasError: false })
+                this.props.onRetry()
+              }}
+              className="text-xs text-primary hover:underline"
+            >
+              Tentar novamente
+            </button>
+          </div>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
 
 interface BrainRegion {
   name: string
-  emotion: string
+  agentType: string
   description: string
   color: string
   position: [number, number, number]
@@ -16,65 +57,65 @@ interface BrainRegion {
 
 const regions: BrainRegion[] = [
   {
-    name: "Córtex Pré-frontal",
-    emotion: "Autocontrolo",
-    description: "Regula impulsos, planeamento e tomada de decisão racional",
+    name: "Agente Lógico",
+    agentType: "logical",
+    description: "Raciocínio causal, dedução e tomada de decisão racional",
     color: "#00f7ff",
     position: [0.0, 0.62, 0.58],
     radius: 0.74,
   },
   {
-    name: "Córtex Parietal",
-    emotion: "Atenção",
-    description: "Integra informação sensorial e mantém foco espacial no ambiente",
-    color: "#ff35ff",
+    name: "Agente Crítico",
+    agentType: "critical",
+    description: "Ceticismo, deteção de ameaças e avaliação de inconsistências",
+    color: "#ff1455",
     position: [0.0, 0.88, 0.1],
     radius: 0.68,
   },
   {
-    name: "Amígdala",
-    emotion: "Medo",
-    description: "Deteta ameaças, ativa alerta emocional e reação de sobrevivência",
-    color: "#ff1455",
+    name: "Agente Emocional",
+    agentType: "emotional",
+    description: "Reação visceral, sentimento somático e leitura emocional",
+    color: "#ff35ff",
     position: [-0.26, -0.12, 0.35],
     radius: 0.52,
   },
   {
-    name: "Núcleo Accumbens",
-    emotion: "Prazer",
-    description: "Relaciona-se com recompensa, motivação e sensação de conquista",
+    name: "Agente Criativo",
+    agentType: "creative",
+    description: "Associação livre, metáforas e pensamento divergente",
     color: "#fff000",
     position: [0.26, -0.1, 0.35],
     radius: 0.52,
   },
   {
-    name: "Hipocampo",
-    emotion: "Memória Afetiva",
-    description: "Consolida memórias e liga experiências a estados emocionais",
+    name: "Agente Curador de Memórias",
+    agentType: "memory_curator",
+    description: "Decide o que armazenar, categoriza e preserva memórias importantes",
     color: "#00ff95",
     position: [-0.4, -0.45, 0.12],
     radius: 0.54,
   },
   {
-    name: "Córtex Insular",
-    emotion: "Empatia",
-    description: "Perceção interna do corpo, dor social e leitura emocional do outro",
+    name: "Agente Social",
+    agentType: "social",
+    description: "Leitura de dinâmicas relacionais, teoria da mente e empatia",
     color: "#ff7300",
     position: [0.6, 0.05, 0.15],
     radius: 0.56,
   },
   {
-    name: "Córtex Temporal",
-    emotion: "Vínculo Social",
-    description: "Interpreta voz, rosto e sinais sociais importantes para conexão",
+    name: "Agente Ético",
+    agentType: "ethical",
+    description: "Julgamento moral, alinhamento com valores e limites éticos",
     color: "#bf00ff",
     position: [-0.62, 0.05, 0.16],
     radius: 0.56,
   },
   {
-    name: "Lobo Occipital",
-    emotion: "Imaginação",
-    description: "Transforma estímulos visuais em imagens mentais e criatividade",
+    name: "Agente Imaginação",
+    agentType: "imagination",
+    description: "Inventa memórias coerentes e expande o conhecimento da persona",
     color: "#2390ff",
     position: [0, 0.22, -0.56],
     radius: 0.62,
@@ -95,6 +136,7 @@ uniform float uTime;
 uniform vec3 uCenters[8];
 uniform vec3 uColors[8];
 uniform float uRadii[8];
+uniform float uActiveFlags[8];
 varying vec3 vLocalPos;
 
 void main() {
@@ -117,7 +159,6 @@ void main() {
     }
   }
 
-  // Cor dominante por região + transição curta apenas na fronteira.
   float edgeBand = 0.07;
   float edgeDelta = secondD - nearestD;
   float edgeMix = 1.0 - smoothstep(0.0, edgeBand, edgeDelta);
@@ -125,32 +166,56 @@ void main() {
   vec3 neighborColor = uColors[secondI];
   vec3 blended = mix(hardColor, neighborColor, edgeMix * 0.5);
 
-  // Menos saturação/intensidade para preservar leitura dos sulcos do modelo.
   vec3 colorOut = pow(blended, vec3(1.04)) * 0.9;
   colorOut = clamp(colorOut, 0.0, 1.0);
 
-  // Cobertura contínua para evitar áreas "mal pintadas" no fundo.
   float coverage = smoothstep(1.35, 0.82, nearestD);
   vec3 baseTint = vec3(0.86, 0.82, 0.87);
   colorOut = mix(baseTint, colorOut, coverage);
 
-  float pulse = 0.88 + 0.12 * sin(uTime * 2.0 + float(nearestI));
-  float alpha = mix(0.28, 0.52, coverage) * pulse;
-  alpha = clamp(alpha, 0.24, 0.56);
+  float isActive = uActiveFlags[nearestI];
+  float pulseSpeed = mix(2.0, 4.5, isActive);
+  float pulseMin = mix(0.88, 0.72, isActive);
+  float pulseRange = mix(0.12, 0.28, isActive);
+  float pulse = pulseMin + pulseRange * sin(uTime * pulseSpeed + float(nearestI));
+
+  float alphaBase = mix(0.28, 0.52, coverage);
+  float alphaBoost = mix(0.0, 0.18, isActive);
+  float alpha = (alphaBase + alphaBoost) * pulse;
+  alpha = clamp(alpha, 0.20, 0.72);
 
   gl_FragColor = vec4(colorOut, alpha);
 }
 `
 
-function RealisticBrain() {
+interface RealisticBrainProps {
+  thoughts?: ThoughtContribution[]
+}
+
+function RealisticBrain({ thoughts }: RealisticBrainProps) {
   const brainRef = useRef<THREE.Group>(null)
   const [hoveredRegionIndex, setHoveredRegionIndex] = useState<number | null>(null)
+  const [pinnedRegionIndex, setPinnedRegionIndex] = useState<number | null>(null)
+  const [expanded, setExpanded] = useState(false)
   const hoveredRegionRef = useRef<number | null>(null)
   const outTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const switchCandidateRef = useRef<{ index: number; since: number } | null>(null)
   const { scene } = useGLTF("/models/brain.glb")
 
-  const hoveredRegion = hoveredRegionIndex !== null ? regions[hoveredRegionIndex] : null
+  const thoughtMap = useMemo(() => {
+    const map: Record<string, ThoughtContribution> = {}
+    if (thoughts) {
+      for (const t of thoughts) {
+        map[t.agent_type] = t
+      }
+    }
+    return map
+  }, [thoughts])
+
+  const activeRegionIndex = pinnedRegionIndex ?? hoveredRegionIndex
+  const activeRegion = activeRegionIndex !== null ? regions[activeRegionIndex] : null
+  const activeThought = activeRegion ? thoughtMap[activeRegion.agentType] : null
+  const isPinned = pinnedRegionIndex !== null
 
   const normalized = useMemo(() => {
     let sourceGeometry: THREE.BufferGeometry | undefined
@@ -188,8 +253,17 @@ function RealisticBrain() {
       uCenters: { value: regions.map((region) => new THREE.Vector3(...region.position)) },
       uColors: { value: regions.map((region) => new THREE.Color(region.color)) },
       uRadii: { value: regions.map((region) => region.radius) },
+      uActiveFlags: { value: new Float32Array(8) },
     }
   }, [])
+
+  useEffect(() => {
+    const flags = new Float32Array(8)
+    for (let i = 0; i < regions.length; i++) {
+      flags[i] = thoughtMap[regions[i].agentType] ? 1.0 : 0.0
+    }
+    overlayUniforms.uActiveFlags.value = flags
+  }, [thoughtMap, overlayUniforms])
 
   useFrame((state) => {
     overlayUniforms.uTime.value = state.clock.getElapsedTime()
@@ -277,7 +351,6 @@ function RealisticBrain() {
             const current = hoveredRegionRef.current
 
             if (!nearest) {
-              // Evita flicker quando há micro-falhas de raycast perto dos limites.
               if (current !== null) {
                 const currentDistance = getRegionDistance(localPoint, current)
                 if (currentDistance <= 1.16) {
@@ -300,8 +373,6 @@ function RealisticBrain() {
             if (current !== null) {
               const currentDistance = getRegionDistance(localPoint, current)
 
-              // Histerese + debounce: só troca se a nova região for claramente melhor
-              // e se a intenção persistir por alguns ms.
               if (currentDistance <= 1.14) {
                 const isClearlyBetter = nearest.distance + 0.12 < currentDistance
                 if (!isClearlyBetter) {
@@ -329,6 +400,23 @@ function RealisticBrain() {
             switchCandidateRef.current = null
             setHoveredRegionIndex(nearest.index)
           }}
+          onClick={(event) => {
+            event.stopPropagation()
+            const localPoint = event.object.worldToLocal(event.point.clone())
+            const nearest = getNearestRegionIndex(localPoint)
+            if (nearest) {
+              if (pinnedRegionIndex === nearest.index) {
+                setPinnedRegionIndex(null)
+                setExpanded(false)
+              } else {
+                setPinnedRegionIndex(nearest.index)
+                setExpanded(false)
+              }
+            } else {
+              setPinnedRegionIndex(null)
+              setExpanded(false)
+            }
+          }}
           onPointerOut={() => {
             if (outTimerRef.current) {
               clearTimeout(outTimerRef.current)
@@ -336,30 +424,108 @@ function RealisticBrain() {
 
             switchCandidateRef.current = null
 
-            outTimerRef.current = setTimeout(() => {
-              setHoveredRegionIndex(null)
-              outTimerRef.current = null
-            }, 160)
+            if (pinnedRegionIndex === null) {
+              outTimerRef.current = setTimeout(() => {
+                setHoveredRegionIndex(null)
+                outTimerRef.current = null
+              }, 160)
+            }
           }}
         >
           <meshBasicMaterial transparent opacity={0} depthWrite={false} />
         </mesh>
 
-        {hoveredRegion && (
+        {activeRegion && (
           <Html
             position={[
-              hoveredRegion.position[0],
-              hoveredRegion.position[1] + 0.2,
-              hoveredRegion.position[2],
+              activeRegion.position[0],
+              activeRegion.position[1] + 0.2,
+              activeRegion.position[2],
             ]}
             center
+            zIndexRange={[50, 0]}
           >
-            <div className="pointer-events-none select-none bg-card/95 backdrop-blur-sm border border-border rounded-md px-2 py-1.5 min-w-[clamp(120px,16vw,150px)] max-w-[clamp(150px,20vw,180px)] shadow-xl">
-              <p className="text-foreground font-semibold text-[clamp(10px,0.9vw,12px)] leading-tight">{hoveredRegion.name}</p>
-              <p className="text-[clamp(9px,0.8vw,11px)] font-semibold mt-0.5" style={{ color: hoveredRegion.color }}>
-                Emoção: {hoveredRegion.emotion}
-              </p>
-              <p className="text-muted-foreground text-[clamp(8px,0.72vw,10px)] mt-1 leading-snug">{hoveredRegion.description}</p>
+            <div
+              className={`select-none bg-card/95 backdrop-blur-sm border rounded-md shadow-xl transition-all ${
+                isPinned
+                  ? "pointer-events-auto cursor-default border-border min-w-[200px] max-w-[340px] px-3 py-2.5"
+                  : "pointer-events-none border-border/60 min-w-[clamp(160px,20vw,220px)] max-w-[clamp(200px,28vw,300px)] px-2.5 py-2"
+              }`}
+              style={isPinned ? { borderColor: activeRegion.color + "40" } : undefined}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-foreground font-semibold text-[clamp(10px,0.9vw,12px)] leading-tight">{activeRegion.name}</p>
+                <div className="flex items-center gap-1.5">
+                  {activeThought && (
+                    <span
+                      className="text-[clamp(8px,0.7vw,10px)] font-mono px-1.5 py-0.5 rounded-full border"
+                      style={{ color: activeRegion.color, borderColor: activeRegion.color + "60" }}
+                    >
+                      {Math.round(activeThought.confidence * 100)}%
+                    </span>
+                  )}
+                  {isPinned && (
+                    <button
+                      className="text-muted-foreground hover:text-foreground text-xs leading-none px-1"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setPinnedRegionIndex(null)
+                        setExpanded(false)
+                      }}
+                      title="Fechar"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {activeThought ? (
+                <>
+                  <p className="text-[clamp(9px,0.8vw,11px)] font-semibold mt-1" style={{ color: activeRegion.color }}>
+                    Pensamento:
+                  </p>
+                  <p className={`text-muted-foreground text-[clamp(8px,0.72vw,10px)] mt-0.5 leading-snug ${
+                    expanded ? "" : "line-clamp-4"
+                  }`}>
+                    {activeThought.perspective}
+                  </p>
+                  {isPinned && activeThought.perspective.length > 150 && (
+                    <button
+                      className="text-[clamp(8px,0.7vw,10px)] mt-1 hover:underline"
+                      style={{ color: activeRegion.color }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setExpanded(!expanded)
+                      }}
+                    >
+                      {expanded ? "Ver menos" : "Ver tudo"}
+                    </button>
+                  )}
+                  <div className="flex items-center gap-2 mt-1.5 pt-1 border-t border-border/40">
+                    <span className="text-[clamp(7px,0.65vw,9px)] text-muted-foreground">
+                      Peso: {activeThought.weight.toFixed(2)}x
+                    </span>
+                    {!isPinned && activeThought.perspective.length > 100 && (
+                      <span className="text-[clamp(7px,0.65vw,9px)] text-muted-foreground/50 italic ml-auto">
+                        clica para expandir
+                      </span>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-[clamp(9px,0.8vw,11px)] font-semibold mt-0.5" style={{ color: activeRegion.color }}>
+                    Inativo
+                  </p>
+                  <p className="text-muted-foreground text-[clamp(8px,0.72vw,10px)] mt-1 leading-snug">
+                    {activeRegion.description}
+                  </p>
+                  <p className="text-muted-foreground/60 text-[clamp(7px,0.65vw,9px)] mt-1 italic">
+                    Este agente não participou na última resposta
+                  </p>
+                </>
+              )}
             </div>
           </Html>
         )}
@@ -368,33 +534,47 @@ function RealisticBrain() {
   )
 }
 
-export function Brain3D() {
+export interface Brain3DProps {
+  thoughts?: ThoughtContribution[]
+}
+
+export function Brain3D({ thoughts }: Brain3DProps) {
+  const [retryKey, setRetryKey] = useState(0)
+
   return (
-    <Canvas
-      camera={{ position: [0, 0, 5], fov: 50 }}
-      className="w-full h-full"
-      gl={{ antialias: true, alpha: true }}
-    >
-      <fog attach="fog" args={["#0a0a12", 5.5, 13]} />
+    <BrainErrorBoundary onRetry={() => setRetryKey((k) => k + 1)}>
+      <Canvas
+        key={retryKey}
+        camera={{ position: [0, 0, 5], fov: 50 }}
+        className="w-full h-full"
+        gl={{ antialias: true, alpha: true }}
+        onCreated={({ gl }) => {
+          gl.getContext().canvas.addEventListener("webglcontextlost", (e) => {
+            e.preventDefault()
+            console.warn("[Brain3D] WebGL context lost, triggering retry")
+            setRetryKey((k) => k + 1)
+          })
+        }}
+      >
+        <fog attach="fog" args={["#0a0a12", 5.5, 13]} />
 
-      <ambientLight intensity={0.48} />
-      <hemisphereLight intensity={0.38} color="#ffd4d4" groundColor="#0a0a12" />
-      <directionalLight position={[4, 5, 5]} intensity={0.95} color="#fff0ef" />
-      <directionalLight position={[-5, 2, -4]} intensity={0.34} color="#86a6ff" />
-      <pointLight position={[0, 2, 2]} intensity={0.52} color="#ffdede" distance={8} />
+        <ambientLight intensity={0.48} />
+        <hemisphereLight intensity={0.38} color="#ffd4d4" groundColor="#0a0a12" />
+        <directionalLight position={[4, 5, 5]} intensity={0.95} color="#fff0ef" />
+        <directionalLight position={[-5, 2, -4]} intensity={0.34} color="#86a6ff" />
+        <pointLight position={[0, 2, 2]} intensity={0.52} color="#ffdede" distance={8} />
 
-      <RealisticBrain />
+        <RealisticBrain thoughts={thoughts} />
 
-      <Environment preset="studio" />
-      
-      <OrbitControls
-        enablePan={false}
-        enableZoom={true}
-        minDistance={3}
-        maxDistance={8}
-        autoRotate={false}
-      />
-    </Canvas>
+        <OrbitControls
+          enablePan={false}
+          enableZoom={true}
+          minDistance={3}
+          maxDistance={8}
+          autoRotate={false}
+        />
+      </Canvas>
+    </BrainErrorBoundary>
   )
 }
 

@@ -8,8 +8,8 @@ const _inter = Inter({ subsets: ["latin"] });
 const _jetbrainsMono = JetBrains_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'Consciência Artificial',
-  description: 'Visualização interativa de consciência artificial com agentes cognitivos',
+  title: 'Personal Core',
+  description: 'Visualização interativa de Personal Core com agentes cognitivos',
   generator: 'v0.app',
   icons: {
     icon: [
