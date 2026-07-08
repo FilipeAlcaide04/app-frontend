@@ -10,7 +10,7 @@ import { AuthGuard } from "@/components/auth-guard"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/hooks/use-auth"
 import { Activity, ArrowLeft, Cpu, LogOut } from "lucide-react"
-import { Agent, getAgent, listAgents } from "@/lib/agents"
+import { Agent, getAgent, listAgents, type ThoughtContribution } from "@/lib/agents"
 
 function StatusIndicator({ label, value, color }: { label: string; value: string; color: string }) {
   return (
@@ -33,6 +33,7 @@ function ConsciousnessContent() {
   const [agent, setAgent] = useState<Agent | null>(null)
   const [agentList, setAgentList] = useState<Agent[]>([])
   const [agentLoading, setAgentLoading] = useState<boolean>(true)
+  const [thoughts, setThoughts] = useState<ThoughtContribution[]>([])
 
   // Carregar lista de agentes do utilizador (para o seletor)
   useEffect(() => {
@@ -147,13 +148,14 @@ function ConsciousnessContent() {
         {/* Main 2-Column Layout */}
         <div className="flex h-[100dvh] pt-16 gap-0 min-w-0 overflow-hidden">
           {/* Left Panel - Brain */}
-          <LeftPanel />
+          <LeftPanel thoughts={thoughts} />
 
           {/* Center Panel - Avatar & Chat */}
           <CenterPanel
             agent={agent}
             agents={agentList}
             loading={agentLoading}
+            onThoughts={setThoughts}
           />
         </div>
       </div>

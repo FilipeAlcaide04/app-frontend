@@ -189,6 +189,11 @@ export default function AgentDetailPage() {
                   {archetype.emoji} {archetype.label}
                 </span>
               )}
+              {agent.is_shared && (
+                <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-violet-500/15 text-violet-300 border border-violet-500/20">
+                  Partilhado
+                </span>
+              )}
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
               Criado {formatRelativeDate(agent.created_at)}

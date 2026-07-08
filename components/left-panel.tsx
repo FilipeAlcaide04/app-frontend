@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic"
 import { Suspense } from "react"
 import { Brain } from "lucide-react"
+import type { ThoughtContribution } from "@/lib/agents"
 
 const Brain3D = dynamic(
   () => import("@/components/brain-3d").then((mod) => mod.Brain3D),
@@ -23,7 +24,11 @@ function LoadingPlaceholder() {
   )
 }
 
-export function LeftPanel() {
+interface LeftPanelProps {
+  thoughts?: ThoughtContribution[]
+}
+
+export function LeftPanel({ thoughts }: LeftPanelProps) {
   return (
     <section className="hidden lg:flex lg:w-[35%] shrink-0 h-full flex-col relative min-h-0 border-r border-border">
       {/* Header */}
@@ -43,7 +48,7 @@ export function LeftPanel() {
       {/* 3D Brain - Takes most space */}
       <div className="flex-1 min-h-0 mt-14">
         <Suspense fallback={<LoadingPlaceholder />}>
-          <Brain3D />
+          <Brain3D thoughts={thoughts} />
         </Suspense>
       </div>
 

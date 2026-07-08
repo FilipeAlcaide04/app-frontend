@@ -5,7 +5,7 @@ import { ChatInterface } from "@/components/chat-interface";
 import { ChevronDown, MessageCircle, UserRound } from "lucide-react";
 import { VRMClientOnly } from "@/components/vrm-client-only";
 import { useVRMLipSync } from "@/components/vrm-avatar";
-import { Agent } from "@/lib/agents";
+import { Agent, type ThoughtContribution } from "@/lib/agents";
 
 const DEFAULT_AVATAR_URL = "/avatars/placeholder.vrm";
 const MAX_AVATAR_RETRIES = 2;
@@ -22,9 +22,10 @@ interface CenterPanelProps {
   agent: Agent | null;
   agents: Agent[];
   loading: boolean;
+  onThoughts?: (thoughts: ThoughtContribution[]) => void;
 }
 
-export function CenterPanel({ agent }: CenterPanelProps) {
+export function CenterPanel({ agent, onThoughts }: CenterPanelProps) {
   const [vrmAvatar, setVrmAvatar] = useState<string>(DEFAULT_AVATAR_URL);
   const [avatarOptions, setAvatarOptions] = useState<AvatarOption[]>([]);
   const [showAvatarMenu, setShowAvatarMenu] = useState(false);
@@ -229,7 +230,7 @@ export function CenterPanel({ agent }: CenterPanelProps) {
 
       {/* Chat Section - Right side */}
       <div className="w-full sm:w-[min(400px,42vw)] sm:min-w-[320px] shrink-0 h-full border-l border-border bg-card/30 flex flex-col">
-        <ChatInterface agent={agent} onBotMessage={handleBotMessage} />
+        <ChatInterface agent={agent} onBotMessage={handleBotMessage} onThoughts={onThoughts} />
       </div>
     </section>
   );

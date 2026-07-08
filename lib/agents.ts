@@ -19,9 +19,19 @@ export interface Agent {
   memories_count: number
   documents_count: number
   is_active: boolean
+  is_shared: boolean
   last_interaction: string | null
   created_at: string | null
   updated_at: string | null
+}
+
+export interface ThoughtContribution {
+  agent_type: string
+  perspective: string
+  confidence: number
+  weight: number
+  supporting_arguments?: string[]
+  opposing_arguments?: string[]
 }
 
 export interface ChatResponse {
@@ -40,6 +50,7 @@ export interface ChatResponse {
   }
   confidence?: number
   duration_ms?: number
+  thought_contributions?: ThoughtContribution[]
 }
 
 export interface GreetingResponse {
@@ -100,6 +111,7 @@ export interface CreatePersonaPayload {
   decision_making_approach?: string
   debate_intensity?: number
   micro_agent_types?: string[]
+  is_shared?: boolean
   initial_memories?: {
     title: string
     content: string

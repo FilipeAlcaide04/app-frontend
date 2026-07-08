@@ -182,6 +182,9 @@ export default function CreateAgentPage() {
   const [language, setLanguage] = useState("pt-PT")
   const [impostorSyndrome, setImpostorSyndrome] = useState(0.3)
 
+  // Shared agent
+  const [isShared, setIsShared] = useState(false)
+
   // Step 2: Personality
   const [attachmentStyle, setAttachmentStyle] = useState("secure")
   const [personality, setPersonality] = useState<Record<string, number>>({ ...DEFAULT_PERSONALITY })
@@ -242,6 +245,7 @@ export default function CreateAgentPage() {
     if (parsed.decision_making_approach) setDecisionApproach(parsed.decision_making_approach)
     if (parsed.debate_intensity != null) setDebateIntensity(parsed.debate_intensity)
     if (Array.isArray(parsed.micro_agent_types)) setMicroAgents(parsed.micro_agent_types)
+    if (parsed.is_shared != null) setIsShared(!!parsed.is_shared)
 
     if (parsed.personality_traits) {
       setPersonality({ ...DEFAULT_PERSONALITY, ...parsed.personality_traits })
@@ -639,6 +643,7 @@ export default function CreateAgentPage() {
         decision_making_approach: decisionApproach,
         debate_intensity: debateIntensity,
         micro_agent_types: microAgents.length > 0 ? microAgents : undefined,
+        is_shared: isShared || undefined,
         initial_memories: memories
           .filter((m) => m.content.trim())
           .map((m) => ({
@@ -874,6 +879,27 @@ export default function CreateAgentPage() {
                 </div>
                 <SliderField label="Síndrome do impostor" value={impostorSyndrome} onChange={setImpostorSyndrome} min={0} max={1} step={0.05} leftLabel="Inexistente" rightLabel="Forte" />
               </div>
+            </Panel>
+
+            <Panel title="Partilha">
+              <label className="flex items-start gap-4 cursor-pointer">
+                <div className="relative mt-0.5">
+                  <input
+                    type="checkbox"
+                    checked={isShared}
+                    onChange={(e) => setIsShared(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-border/60 rounded-full peer-checked:bg-primary transition-colors" />
+                  <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform peer-checked:translate-x-5" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Agente partilhado</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Qualquer utilizador pode interagir com este agente. O agente acumula memórias de todas as conversas — como uma pessoa real que conhece várias pessoas.
+                  </p>
+                </div>
+              </label>
             </Panel>
           </div>
         )}
@@ -1379,6 +1405,7 @@ export default function CreateAgentPage() {
               <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
                 <SummaryItem label="Nome" value={name || "—"} />
                 <SummaryItem label="Avatar" value={avatar} />
+                <SummaryItem label="Partilhado" value={isShared ? "Sim" : "Não"} />
                 <SummaryItem label="Vinculação" value={ATTACHMENT_STYLES.find((s) => s.value === attachmentStyle)?.label || attachmentStyle} />
                 <SummaryItem label="Pensamento" value={THINKING_STYLES.find((s) => s.value === thinkingStyle)?.label || thinkingStyle} />
                 <SummaryItem label="Decisão" value={DECISION_APPROACHES.find((s) => s.value === decisionApproach)?.label || decisionApproach} />

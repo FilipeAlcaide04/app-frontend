@@ -5,7 +5,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Send, Volume2, VolumeX, Settings, Bot, Plus, Heart, Brain, Flame, Timer, RotateCcw, Trash2, MoreVertical } from "lucide-react"
-import { Agent, chatWithAgent, getAgentGreeting, resetAgentConversation } from "@/lib/agents"
+import { Agent, chatWithAgent, getAgentGreeting, resetAgentConversation, type ThoughtContribution } from "@/lib/agents"
 import { MemoryManager } from "@/components/memory-manager"
 import { getSavedVoiceGender, saveVoiceGender, type VoiceGender } from "@/lib/tts"
 import { cleanForDisplay, cleanForTTS } from "@/lib/text-clean"
@@ -20,9 +20,10 @@ interface Message {
 interface ChatInterfaceProps {
   agent: Agent | null
   onBotMessage?: (text: string, emotionalState?: Record<string, any>) => void
+  onThoughts?: (thoughts: ThoughtContribution[]) => void
 }
 
-export function ChatInterface({ agent, onBotMessage }: ChatInterfaceProps) {
+export function ChatInterface({ agent, onBotMessage, onThoughts }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [isTyping, setIsTyping] = useState(false)
@@ -186,6 +187,7 @@ export function ChatInterface({ agent, onBotMessage }: ChatInterfaceProps) {
         { id: Date.now() + 1, text: displayText, isUser: false, timestamp: new Date() },
       ])
       if (voiceEnabled) onBotMessage?.(cleanForTTS(rawText), resp.emotional_state)
+      if (resp.thought_contributions?.length) onThoughts?.(resp.thought_contributions)
     } catch (err: any) {
       setError(err?.message || "Erro ao enviar mensagem")
     } finally {

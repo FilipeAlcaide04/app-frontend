@@ -165,10 +165,17 @@ function AgentCard({
           {agent.description || "Sem descrição."}
         </p>
 
-        {/* Archetype */}
-        <span className="inline-flex self-start items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-muted text-muted-foreground mb-4">
-          {archetype.emoji} {archetype.label}
-        </span>
+        {/* Archetype & Shared badge */}
+        <div className="flex items-center gap-1.5 mb-4">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-muted text-muted-foreground">
+            {archetype.emoji} {archetype.label}
+          </span>
+          {agent.is_shared && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-violet-500/15 text-violet-300 border border-violet-500/20">
+              <Users className="w-2.5 h-2.5" /> Partilhado
+            </span>
+          )}
+        </div>
 
         {/* Stats */}
         <div className="mt-auto pt-3 border-t border-border/40 flex items-center gap-4 text-xs text-muted-foreground">
@@ -214,6 +221,11 @@ function AgentRow({
             <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted text-muted-foreground">
               {archetype.emoji} {archetype.label}
             </span>
+            {agent.is_shared && (
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-violet-500/15 text-violet-300 border border-violet-500/20 flex items-center gap-1">
+                <Users className="w-2.5 h-2.5" /> Partilhado
+              </span>
+            )}
           </div>
           <p className="text-xs text-muted-foreground truncate mt-0.5">
             {agent.description || "Sem descrição."}
