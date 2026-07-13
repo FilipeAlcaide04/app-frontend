@@ -4,11 +4,12 @@ import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Send, Volume2, VolumeX, Settings, Bot, Plus, Heart, Brain, Flame, Timer, RotateCcw, Trash2, MoreVertical } from "lucide-react"
+import { Send, Volume2, VolumeX, Settings, Bot, Plus, Heart, Brain, Flame, Timer, RotateCcw, Trash2, MoreVertical, Mic, MicOff } from "lucide-react"
 import { Agent, chatWithAgent, getAgentGreeting, resetAgentConversation, type ThoughtContribution } from "@/lib/agents"
 import { MemoryManager } from "@/components/memory-manager"
 import { getSavedVoiceGender, saveVoiceGender, type VoiceGender } from "@/lib/tts"
 import { cleanForDisplay, cleanForTTS } from "@/lib/text-clean"
+import { useSpeechRecognition } from "@/hooks/useSpeechRecognition"
 
 interface Message {
   id: number
@@ -42,6 +43,21 @@ export function ChatInterface({ agent, onBotMessage, onThoughts }: ChatInterface
   const greetingRequestRef = useRef(0)
   const voiceEnabledRef = useRef(voiceEnabled)
   const onBotMessageRef = useRef(onBotMessage)
+  const pendingVoiceSendRef = useRef(false)
+
+  const { isListening, transcript, error: micError, isSupported: micSupported, startListening, stopListening } = useSpeechRecognition({
+    language: "pt-PT",
+    onTranscript: (text) => {
+      setInput(text)
+      pendingVoiceSendRef.current = true
+    },
+  })
+
+  useEffect(() => {
+    if (isListening && transcript) {
+      setInput(transcript)
+    }
+  }, [transcript, isListening])
 
   useEffect(() => {
     setVoiceGender(getSavedVoiceGender())
@@ -194,6 +210,14 @@ export function ChatInterface({ agent, onBotMessage, onThoughts }: ChatInterface
       setIsTyping(false)
     }
   }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (pendingVoiceSendRef.current && input.trim() && !isListening) {
+      pendingVoiceSendRef.current = false
+      handleSend()
+    }
+  }, [input, isListening])
 
   if (!agent) {
     return (
@@ -391,23 +415,43 @@ export function ChatInterface({ agent, onBotMessage, onThoughts }: ChatInterface
         )}
       </div>
 
-      {error && (
+      {(error || micError) && (
         <div className="px-3 py-1.5 text-[11px] text-red-300 bg-red-500/10 border-t border-red-500/20">
-          {error}
+          {error || micError}
         </div>
       )}
 
       {/* Input */}
       <div className="p-2.5 sm:p-4 border-t border-border bg-card/30 ">
+        {isListening && (
+          <div className="flex items-center gap-2 mb-2 px-2">
+            <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+            <span className="text-[11px] text-red-400">A ouvir... fala agora</span>
+          </div>
+        )}
         <div className="flex items-center gap-1.5 sm:gap-2">
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
-            placeholder={`Fala com ${agent.name}...`}
+            placeholder={isListening ? "A ouvir..." : `Fala com ${agent.name}...`}
             disabled={isTyping}
-            className="h-9 sm:h-10 bg-input border-border/50 rounded-full px-3 sm:px-4 text-sm focus:border-primary/50 transition-all"
+            className={`h-9 sm:h-10 bg-input border-border/50 rounded-full px-3 sm:px-4 text-sm focus:border-primary/50 transition-all ${isListening ? "border-red-500/50" : ""}`}
+            readOnly={isListening}
           />
+
+          {micSupported && (
+            <Button
+              size="icon"
+              variant={isListening ? "destructive" : "outline"}
+              className={`h-9 w-9 sm:h-10 sm:w-10 rounded-full shrink-0 transition-all ${isListening ? "animate-pulse shadow-lg shadow-red-500/30" : ""}`}
+              onClick={isListening ? stopListening : startListening}
+              disabled={isTyping}
+              title={isListening ? "Parar gravação" : "Gravar voz"}
+            >
+              {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+            </Button>
+          )}
 
           <Button
             size="icon"
